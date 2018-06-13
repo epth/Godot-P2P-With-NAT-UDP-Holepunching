@@ -1,6 +1,6 @@
-
 #!/usr/bin/env python
-"""UDP hole punching server."""
+#based on https://github.com/stylesuxx/udp-hole-punching
+
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
 import json
@@ -124,3 +124,4 @@ datagram:
       'private-port': <int>,
     }
 
+'''
