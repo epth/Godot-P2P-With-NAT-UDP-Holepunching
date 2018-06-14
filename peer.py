@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+#based on https://github.com/stylesuxx/udp-hole-punching
+#great info here: http://www.brynosaurus.com/pub/net/p2pnat/
 """
 
 UDP hole punching peer. Does not require port forwarding

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-#based on https://github.com/stylesuxx/udp-hole-punching
+#based on: https://github.com/stylesuxx/udp-hole-punching
+#great info here: http://www.brynosaurus.com/pub/net/p2pnat/
 """
     Handshake server for UDP hole-punching.
     Firewall must allow ingress and egress at SERVER_PORT = 5160
