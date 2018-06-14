@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#based on https://github.com/stylesuxx/udp-hole-punching
+#based on: https://github.com/stylesuxx/udp-hole-punching
 #great info here: http://www.brynosaurus.com/pub/net/p2pnat/
 """
 
@@ -129,6 +129,7 @@ class ClientProtocol(DatagramProtocol):
                 "body": "hello you!"
             }
             self.transport.write(json.dumps(message).encode(), self.peerAddress)
+            self.peerConnectionEstablished = True
 
 
         else:
@@ -157,9 +158,9 @@ if __name__ == '__main__':
         if len(sys.argv) < 4:
             print(usage)
             exit(-1)
-        print("running as host on port " + str(myPrivatePort))
         iAmServer = False
         myPrivatePort = 3334
+        print("running as host on port " + str(myPrivatePort))
         serverName = sys.argv[3]
         #optional password
         if len(sys.argv) > 4:
