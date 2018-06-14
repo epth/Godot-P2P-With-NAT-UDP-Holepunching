@@ -1,5 +1,21 @@
 #!/usr/bin/env python
 #based on https://github.com/stylesuxx/udp-hole-punching
+"""
+UNTESTED because I can't figure out how to get this script server hosted anywhere
+
+1) user A finds out his private ip and port, then sends a json (string) as a udp data packet:
+    {
+      'registering-server': True,
+      'user-name': <string>,
+      'private-ip': <string>,  
+      'private-port': <int>,
+    }
+
+2) User B finds out her provate IP and port,then sends a json (string) as a udp packet:
+
+
+
+"""
 
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
@@ -50,6 +66,7 @@ class ServerProtocol(DatagramProtocol):
         return json.dumps(ret)
 
     def datagramReceived(self, datagram, address):
+        print("received " + datagram + " from " + address[0])
         """Handle incoming datagram messages."""
 
         #gather the user info
@@ -79,9 +96,7 @@ if __name__ == '__main__':
     reactor.run()
 
 
-{
 
-}
 
 #listen on a port
 
