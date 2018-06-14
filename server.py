@@ -56,13 +56,13 @@ class ServerProtocol(DatagramProtocol):
         return ret    
 
 
-    def makeHandshakeJsonString(self, jData):
+    def makeHandshakeJson(self, jData):
         ret = {}
         ret['public-address'] = (jData['public-ip'], jData['public-port'])
         ret['private-address'] = (jData['private-ip'], jData['private-port'])
         if 'server-password' in jData.keys():
             ret['server-password'] = jData['server-password']
-        return json.dumps(ret)
+        return ret
 
     def datagramReceived(self, datagram, address):
         datagram = datagram.decode("utf-8")
@@ -89,8 +89,8 @@ class ServerProtocol(DatagramProtocol):
                 print(jData['server-name'] + " not found")
                 return
             serverJData = self.server_hosts[jData['server-name']]
-            serverInfo = self.makeHandshakeJsonString(serverJData)
-            clientInfo = self.makeHandshakeJsonString(jData)
+            serverInfo = self.makeHandshakeJson(serverJData)
+            clientInfo = self.makeHandshakeJson(jData)
             self.transport.write(json.dumps(serverInfo).encode(), clientInfo['public-address'])
             self.transport.write(json.dumps(clientInfo).encode(), serverInfo['public-address'])
             print("sent info to " + jData['server-name'] + " and " + jData['user-name'])
