@@ -9,8 +9,9 @@ import json
 HANDSHAKE_SERVER_IP = '35.197.160.85'
 HANDSHAKE_SERVER_PORT = 5160
 
-MY_PRIVATE_PORT = 3334 #can be anything
+
 MY_PRIVATE_IP = '192.168.1.127'
+myPort = None
 userName = "" #set by cli
 isServer = False #set by cli
 serverName = "" #set by cli
@@ -36,14 +37,14 @@ class ClientProtocol(DatagramProtocol):
                 'registering-server': True,
                 'user-name': userName,
                 'private-ip': MY_PRIVATE_IP,  
-                'private-port': MY_PRIVATE_PORT
+                'private-port': myPort
             }
         else:
             data = {
                 'registering-server': False,
                 'user-name': userName,
                 'private-ip': MY_PRIVATE_IP,  
-                'private-port': MY_PRIVATE_PORT,
+                'private-port': myPort,
                 'server-name' : serverName,
                 'server-password': serverPassword,
             }
@@ -77,13 +78,15 @@ class ClientProtocol(DatagramProtocol):
 if __name__ == '__main__':
     if sys.argv[1] == 'server':
         isServer = True
+        myPort = 3335
         print("running as server")
     elif sys.argv[1] == 'host':
         isServer = False
+        myPort = 3334
         print("running as host")
-        hostName = sys.argv[2]
-        if len(sys.argv) > 3:
-            serverPassword = sys.argv[3]
+        serverName = sys.argv[3]
+        if len(sys.argv) > 4:
+            serverPassword = sys.argv[4]
     userName = sys.argv[2]
 
 

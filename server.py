@@ -58,40 +58,43 @@ class ServerProtocol(DatagramProtocol):
 
     def makeHandshakeJsonString(self, jData):
         ret = {}
-        ret['public-address'] = jData['public-ip'] + ':' + jData['public-port']
-        ret['private-address'] = jData['private-ip'] + ':' + jData['private-port']
+        ret['public-address'] = jData['public-ip'] + ':' + str(jData['public-port'])
+        ret['private-address'] = jData['private-ip'] + ':' + str(jData['private-port'])
         if 'server-password' in jData.keys():
             ret['server-password'] = jData['server-password']
         return json.dumps(ret)
 
     def datagramReceived(self, datagram, address):
         datagram = datagram.decode("utf-8")
-        #print("received " + datagram + " from " + address[0])
+        print("received " + datagram + " from " + address[0])
 
         #gather the user info
         jData = self.validateData(datagram)
         if jData == None:
             return
         jData['public-ip'] = address[0]
-        jData['public-port'] = str(address[1])
+        jData['public-port'] = address[1]
         
         #register server if need be
         if jData['registering-server'] == True:
             #store the server by its user-name
             self.server_hosts[jData['user-name']] = jData
+            print("servers updated: ")
+            print(self.server_hosts)
 
         #otherwise, we're joining a server and a client- HOLE PUNCH!
         elif jData['registering-server'] == False:
+            print("joining: " + jData['server-name'])
             if not jData['server-name'] in self.server_hosts.keys():
+                print(jData['server-name'] + " not found")
                 return
             serverJData = self.server_hosts[jData['server-name']]
             serverInfo = self.makeHandshakeJsonString(serverJData)
             clientInfo = self.makeHandshakeJsonString(jData)
             self.transport.write(serverInfo, jData['public-address'])
             self.transport.write(clientInfo, serverJData['public-address'])
-            print("sent")
-
-        print(self.server_hosts)
+            print("sent info to " + jData['server-name'] + " and " + jData['user-name'])
+        
 
 if __name__ == '__main__':
     reactor.listenUDP(PORT, ServerProtocol())
