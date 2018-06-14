@@ -76,12 +76,12 @@ class ServerProtocol(DatagramProtocol):
         jData['public-port'] = str(address[1])
         
         #register server if need be
-        if jData['registering_server'] == True:
+        if jData['registering-server'] == True:
             #store the server by its user-name
             self.server_hosts[jData['user-name']] = jData
 
         #otherwise, we're joining a server and a client- HOLE PUNCH!
-        elif jData['registering_server'] == False:
+        elif jData['registering-server'] == False:
             if not jData['host-name'] in self.server_hosts.keys():
                 return
             serverJData = self.server_hosts[jData['host-name']]
