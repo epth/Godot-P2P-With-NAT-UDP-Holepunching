@@ -91,8 +91,8 @@ class ServerProtocol(DatagramProtocol):
             serverJData = self.server_hosts[jData['server-name']]
             serverInfo = self.makeHandshakeJsonString(serverJData)
             clientInfo = self.makeHandshakeJsonString(jData)
-            self.transport.write(serverInfo, jData['public-address'])
-            self.transport.write(clientInfo, serverJData['public-address'])
+            self.transport.write(serverInfo, clientInfo['public-address'])
+            self.transport.write(clientInfo, serverInfo['public-address'])
             print("sent info to " + jData['server-name'] + " and " + jData['user-name'])
         
 
