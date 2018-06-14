@@ -169,6 +169,16 @@ if __name__ == '__main__':
     reactor.listenUDP(myPrivatePort, ClientProtocol())
     reactor.run()
 
-    # protocol = ClientProtocol()
-    # t = reactor.listenUDP(myPrivatePort, protocol)
-    # reactor.run()
+
+
+
+
+"""
+todo 
+: make it work with multiple peers
+: make it work with unordered and lost packets
+: give it a heartbeat
+
+remember:
+: this is only a demo for the server, so we can implement in godot. Don't go crazy
+"""

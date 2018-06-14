@@ -1,0 +1,58 @@
+create a packetpeerudp for the handshake server
+unconfirmed_peers = {} #holds status and paketpeers for the peers- not the server
+confirmed_peers = {}
+heartbeat_packets = {} #include retry countdown until give up
+peers = {}
+
+
+_ready:
+    if serverhost:
+        add server registration packet of type registration to heartbeat_packets #this will stay in there, resending every heartbeat
+    else:
+        add server join packet with type join request to heartbeat_packets
+_process:
+    Every nth time:
+        decrement tries left of the heartbeat_packets
+        for each heartbeat_packet:
+            if tries left == 0:
+                if not serverhost:
+                    give up completely
+                else:
+                    if it was registration heartbeat:
+                        give up completely
+                    elif:
+                        remove all other heartbeat_packets for same peer as this heartbeat_packet
+                        remove unconfirmed_peer and confirmed_peer if nay matching
+                        display a message about peer being dropped
+		send heartbeat_packets
+        
+
+
+    if there are available packets from the server:
+        for each of them:
+            if it's the register confirmation:
+                reset the tries left in heartbeat_packet
+
+            elif it's join info:
+                if not serverhost:
+                    remove join request packet from heartbeat_packets if it exists
+                if there's no matching confirmed_peer or unconfirmed_peer: #i.e. we havent received info for this eper before                                            or unconfirmed_peers: #i.e. same username with either matchng global or no global and matching local
+                    extract info
+                    add unconfirmed_peer with two peerpacketUDP (one for local, one for global)
+                    send local address test of type test
+                    send global address test of type test
+                    add both to heartbeat_packets
+
+    for each unconfirmed_peer:
+        if there's available packets:
+            if the type is test:
+                return same body with type test-success
+            if the type is test-success:
+                add to confirmed_peers if matching doesnt exist
+                remove from peerpacketpeers if matching does exist
+                remove tests from heartbeat_packets if they exist
+    
+    for each confirmed_peer:
+        if there's available packets:
+            if the type is heartbeat:
+                reset heartbeat tries left

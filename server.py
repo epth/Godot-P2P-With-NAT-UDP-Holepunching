@@ -31,6 +31,7 @@
 """
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
+from twisted.internet import task
 import json
 import sys
 
@@ -107,6 +108,7 @@ class ServerProtocol(DatagramProtocol):
         #register server if tat's what we're doing
         if jData['registering-server'] == True:
             #store the server by its user-name
+            jData['removal-countdown'] = 2 
             self.serverHosts[jData['user-name']] = jData
             print("server list updated.")
             print("    ->" + str(self.serverHosts))
@@ -127,8 +129,26 @@ class ServerProtocol(DatagramProtocol):
             self.transport.write(json.dumps(serverInfo).encode(), clientInfo['public-address'])
             self.transport.write(json.dumps(clientInfo).encode(), serverInfo['public-address'])
             print("sent linking info to " + jData['server-name'] + " and " + jData['user-name'])
-        
+
+    def serverHostRefresh(self):
+        serversToRemove = []
+        for serverName, serverInfo in self.serverHosts.items():
+            serverInfo['removal-countdown'] -= 1
+            if serverInfo['removal-countdown'] <= 0:
+                serversToRemove.append(serverName)
+        for serverToRemove in serversToRemove:
+            self.serverHosts.pop(serverToRemove)
+        print("-> " + str(self.serverHosts))
 
 if __name__ == '__main__':
-    reactor.listenUDP(SERVER_PORT, ServerProtocol())
+    listener = ServerProtocol()
+    reactor.listenUDP(SERVER_PORT, listener)
+    task.LoopingCall(listener.serverHostRefresh).start(3.0)
     reactor.run()
+
+
+"""
+todo 
+: make it refresh server list 
+: send back confirmation / error message
+"""
