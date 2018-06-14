@@ -58,8 +58,8 @@ class ServerProtocol(DatagramProtocol):
 
     def makeHandshakeJsonString(self, jData):
         ret = {}
-        ret['public-address'] = jData['public-ip'] + ':' + str(jData['public-port'])
-        ret['private-address'] = jData['private-ip'] + ':' + str(jData['private-port'])
+        ret['public-address'] = (jData['public-ip'], jData['public-port'])
+        ret['private-address'] = (jData['private-ip'], jData['private-port'])
         if 'server-password' in jData.keys():
             ret['server-password'] = jData['server-password']
         return json.dumps(ret)
@@ -91,8 +91,8 @@ class ServerProtocol(DatagramProtocol):
             serverJData = self.server_hosts[jData['server-name']]
             serverInfo = self.makeHandshakeJsonString(serverJData)
             clientInfo = self.makeHandshakeJsonString(jData)
-            self.transport.write(serverInfo, clientInfo['public-address'])
-            self.transport.write(clientInfo, serverInfo['public-address'])
+            self.transport.write(json.dumps(serverInfo).encode(), clientInfo['public-address'])
+            self.transport.write(json.dumps(clientInfo).encode(), serverInfo['public-address'])
             print("sent info to " + jData['server-name'] + " and " + jData['user-name'])
         
 
