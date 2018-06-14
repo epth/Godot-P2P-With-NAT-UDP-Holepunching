@@ -28,10 +28,10 @@ class ClientProtocol(DatagramProtocol):
 
     def startProtocol(self):
         """Register with the rendezvous server."""
-        self.server_connect = False
-        self.peer_init = False
+        self.peer_holepunched = False
+        self.peer_mirrored = False
         self.peer_connect = False
-        self.peer_address = None
+  
         if (isServer):
             data = {
                 'registering-server': True,
@@ -53,27 +53,42 @@ class ClientProtocol(DatagramProtocol):
         print("sent")
 
     def datagramReceived(self, datagram, host):
-        print("received")
-        # if not self.server_connect:
-        #     self.server_connect = True
-        #     self.transport.write('ok', (sys.argv[1], int(sys.argv[2])))
-        #     print('Connected to server, waiting for peer...')
+        print("received info")
 
-        # elif not self.peer_init:
-        #     self.peer_init = True
-        #     self.peer_address = self.toAddress(datagram)
-        #     self.transport.write('init', self.peer_address)
-        #     print 'Sent init to %s:%d' % self.peer_address
+        if not self.peer_holepunched:
+            self.peer_init = True
+            self.peerInfo = json.loads(datagram)
+            print(self.peerInfo)
+            self.peerPublicAddress = self.peerInfo['public-address']
+            self.peerPrivateAddress = self.peerInfo['private-address']
+            self.peerUserName = self.peerInfo['user-name']
+            dataForPublicAttempt = {
+                "user-name" : userName,
+                "used-public": True
+            }
+            self.transport.write(json.dumps(dataForPublicAttempt).encode(), self.peerPublicAddress)
+            dataForPrivateAttempt = {
+                "user-name" : userName,
+                "used-public": False
+            }
+            self.transport.write(json.dumps(dataForPrivateAttempt).encode(), self.peerPublicAddress)
+            print("sent to peer's public and private addresses")
 
-        # elif not self.peer_connect:
-        #     self.peer_connect = True
-        #     host = self.transport.getHost().host
-        #     port = self.transport.getHost().port
-        #     msg = 'Message from %s:%d' % (host, port)
-        #     self.transport.write(msg, self.peer_address)
+        elif not self.peer_mirrored:
+            self.transport.write(datagram, self.peerPublicAddress)
+            self.peer_mirrored = True
+            print("mirrored back: " + str(json.loads(datagram))
 
-        # else:
-        #     print 'Received:', datagram
+        elif not self.peer_connect:
+            j = json.loads(datagram)
+            if j['used-public']:
+                self.peerAddress = self.peerPublicAddress
+            else:
+                self.peerAddress = self.peerPrivateAddress
+            print('peer address set as: ' + peerAddress)
+            self.transport.write(json.dumps({"HELLO!": "YOU!"}).encode(), self.peerAddress)
+        else:
+            print("received: " + str(json.loads(datagram))
 
 if __name__ == '__main__':
     if sys.argv[1] == 'server':

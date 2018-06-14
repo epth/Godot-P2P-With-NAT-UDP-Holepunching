@@ -60,6 +60,7 @@ class ServerProtocol(DatagramProtocol):
         ret = {}
         ret['public-address'] = (jData['public-ip'], jData['public-port'])
         ret['private-address'] = (jData['private-ip'], jData['private-port'])
+        ret['user-name'] = jData['user-name']
         if 'server-password' in jData.keys():
             ret['server-password'] = jData['server-password']
         return ret
