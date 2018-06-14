@@ -8,9 +8,13 @@ import json
 
 HANDSHAKE_SERVER_IP = '35.197.160.85'
 HANDSHAKE_SERVER_PORT = 5160
-MY_PRIVATE_PORT = 3334
+
+MY_PRIVATE_PORT = 3334 #can be anything
 MY_PRIVATE_IP = '192.168.1.127'
-USER_NAME = 'euler'
+userName = "" #set by cli
+isServer = False #set by cli
+serverName = "" #set by cli
+serverPassword = "" #set by cli
 
 class ClientProtocol(DatagramProtocol):
     """
@@ -27,22 +31,31 @@ class ClientProtocol(DatagramProtocol):
         self.peer_init = False
         self.peer_connect = False
         self.peer_address = None
-        data = {
-            'registering-server': True,
-            'user-name': USER_NAME,
-            'private-ip': MY_PRIVATE_IP,  
-            'private-port': MY_PRIVATE_PORT
-        }
+        if (isServer):
+            data = {
+                'registering-server': True,
+                'user-name': userName,
+                'private-ip': MY_PRIVATE_IP,  
+                'private-port': MY_PRIVATE_PORT
+            }
+        else:
+            data = {
+                'registering-server': False,
+                'user-name': userName,
+                'private-ip': MY_PRIVATE_IP,  
+                'private-port': MY_PRIVATE_PORT,
+                'server-name' : serverName,
+                'server-password': serverPassword,
+            }
+
         self.transport.write(json.dumps(data).encode(), (HANDSHAKE_SERVER_IP, HANDSHAKE_SERVER_PORT))
         print("sent")
 
     def datagramReceived(self, datagram, host):
-        pass
-        # """Handle incoming datagram messages."""
-        # if not self.server_connect:
-        #     self.server_connect = True
-        #     self.transport.write('ok', (sys.argv[1], int(sys.argv[2])))
-        #     print 'Connected to server, waiting for peer...'
+        if not self.server_connect:
+            self.server_connect = True
+            self.transport.write('ok', (sys.argv[1], int(sys.argv[2])))
+            print('Connected to server, waiting for peer...')
 
         # elif not self.peer_init:
         #     self.peer_init = True
@@ -61,6 +74,18 @@ class ClientProtocol(DatagramProtocol):
         #     print 'Received:', datagram
 
 if __name__ == '__main__':
+    if sys.argv[1] == 'server':
+        isServer = True
+        print("running as server")
+    elif sys.argv[1] == 'host':
+        isServer = False
+        print("running as host")
+        hostName = sys.argv[2]
+        if len(sys.argv) > 3:
+            serverPassword = sys.argv[3]
+    userName = sys.argv[2]
+
+
     protocol = ClientProtocol()
     t = reactor.listenUDP(0, protocol)
     reactor.run()

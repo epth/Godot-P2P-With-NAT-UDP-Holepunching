@@ -47,7 +47,7 @@ class ServerProtocol(DatagramProtocol):
                 return
         #required for users seeking to join a server
         if not jData['registering-server']:
-            requiredKeys = ['host-name', 'password']
+            requiredKeys = ['server-name', 'server-password']
             for key in requiredKeys:
                 if key in jData:
                     ret[key] = jData[key]
@@ -60,8 +60,8 @@ class ServerProtocol(DatagramProtocol):
         ret = {}
         ret['public-address'] = jData['public-ip'] + ':' + jData['public-port']
         ret['private-address'] = jData['private-ip'] + ':' + jData['private-port']
-        if 'password' in jData.keys():
-            ret['password'] = jData['password']
+        if 'server-password' in jData.keys():
+            ret['server-password'] = jData['server-password']
         return json.dumps(ret)
 
     def datagramReceived(self, datagram, address):
@@ -82,9 +82,9 @@ class ServerProtocol(DatagramProtocol):
 
         #otherwise, we're joining a server and a client- HOLE PUNCH!
         elif jData['registering-server'] == False:
-            if not jData['host-name'] in self.server_hosts.keys():
+            if not jData['server-name'] in self.server_hosts.keys():
                 return
-            serverJData = self.server_hosts[jData['host-name']]
+            serverJData = self.server_hosts[jData['server-name']]
             serverInfo = self.makeHandshakeJsonString(serverJData)
             clientInfo = self.makeHandshakeJsonString(jData)
             self.transport.write(serverInfo, jData['public-address'])
