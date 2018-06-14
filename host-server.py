@@ -52,10 +52,11 @@ class ClientProtocol(DatagramProtocol):
         print("sent")
 
     def datagramReceived(self, datagram, host):
-        if not self.server_connect:
-            self.server_connect = True
-            self.transport.write('ok', (sys.argv[1], int(sys.argv[2])))
-            print('Connected to server, waiting for peer...')
+        print("received")
+        # if not self.server_connect:
+        #     self.server_connect = True
+        #     self.transport.write('ok', (sys.argv[1], int(sys.argv[2])))
+        #     print('Connected to server, waiting for peer...')
 
         # elif not self.peer_init:
         #     self.peer_init = True

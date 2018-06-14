@@ -89,6 +89,7 @@ class ServerProtocol(DatagramProtocol):
             clientInfo = self.makeHandshakeJsonString(jData)
             self.transport.write(serverInfo, jData['public-address'])
             self.transport.write(clientInfo, serverJData['public-address'])
+            print("sent")
 
         print(self.server_hosts)
 
