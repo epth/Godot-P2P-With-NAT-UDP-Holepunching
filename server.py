@@ -20,12 +20,12 @@ UNTESTED because I can't figure out how to get this script server hosted anywher
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
 import json
+import bson
 import sys
 
 PORT = 5160
 
 class ServerProtocol(DatagramProtocol):
-
     def __init__(self):
         """Initialize with empy address list."""
         self.server_hosts = {}

@@ -22,7 +22,7 @@ class ClientProtocol(DatagramProtocol):
         self.peer_init = False
         self.peer_connect = False
         self.peer_address = None
-        self.transport.write(b'hello there', ("35.197.160.85", PORT))
+        self.transport.write('{"this": False}'.encode(), ("35.197.160.85", PORT))
 
     def datagramReceived(self, datagram, host):
         pass
