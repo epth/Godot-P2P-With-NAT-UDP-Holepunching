@@ -1,51 +1,61 @@
 #!/usr/bin/env python
 #based on https://github.com/stylesuxx/udp-hole-punching
 """
-UNTESTED because I can't figure out how to get this script server hosted anywhere
+    Handshake server for UDP hole-punching.
+    Firewall must allow ingress and egress at SERVER_PORT = 5160
+    Peers can send two kinds of messages:
+        {
+            'registering-server': True,
+            'user-name': <unique string>
+            'private-ip': <string>
+            'private-port' <int>
+        }
+    registers a server peer under the name user-name, and
+        {
+            'registering-server': False,
+            'user-name': <unique string>
+            'private-ip': <string>
+            'private-port' <int>
+            'server-name': <unique string>
+            'server-password': <string>
+        }
+    initiates a linking between the sender and the server peer registered user server-name.
 
-1) user A finds out his private ip and port, then sends a json (string) as a udp data packet:
-    {
-      'registering-server': True,
-      'user-name': <string>,
-      'private-ip': <string>,  
-      'private-port': <int>,
-    }
+    This intermediary server does this by sending each of the two peers the other peer's 
+    private and public (garnered form the incoming message headers themselves) addresses.
+    From there, it's up to the peers to hole-punch and link to each other.
 
-2) User B finds out her provate IP and port,then sends a json (string) as a udp packet:
-
-
+    note: currently does not support server list refresh and doesn't even think about packet unreliability.
 
 """
-
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
 import json
 import sys
 
-PORT = 5160
+SERVER_PORT = 5160
 
 class ServerProtocol(DatagramProtocol):
     def __init__(self):
-        """Initialize with empy address list."""
-        self.server_hosts = {}
+        """Initialize with empy server list."""
+        self.serverHosts = {}
 
 
-    def validateData(self, dataString):
+
+    def validateData(self, jData):
         """
-        Take a datagram string.
         Checks whether all required keys are present.
         Returns json if good, None otherwise
         """
-        jData = json.loads(dataString)
         ret = {}
-        #required for all users
+        #required for all peers
         requiredKeys = ['registering-server', 'user-name', 'private-ip', 'private-port']
         for key in requiredKeys:
             if key in jData:
                 ret[key] = jData[key]
             else:
                 return
-        #required for users seeking to join a server
+        #required for peers seeking to join a server
         if not jData['registering-server']:
             requiredKeys = ['server-name', 'server-password']
             for key in requiredKeys:
@@ -56,7 +66,16 @@ class ServerProtocol(DatagramProtocol):
         return ret    
 
 
+
     def makeHandshakeJson(self, jData):
+        """
+        Returns { 
+            'public-address': <address tuple>,  
+            'private-address': <address tuple>,
+            'user-name': <string>
+        }
+        from a full json dict
+        """
         ret = {}
         ret['public-address'] = (jData['public-ip'], jData['public-port'])
         ret['private-address'] = (jData['private-ip'], jData['private-port'])
@@ -65,84 +84,50 @@ class ServerProtocol(DatagramProtocol):
             ret['server-password'] = jData['server-password']
         return ret
 
+
+
+
     def datagramReceived(self, datagram, address):
-        datagram = datagram.decode("utf-8")
-        print("received " + datagram + " from " + address[0])
+        """
+        Handles incoming packets.
+        """
+        #binary -> string -> json dict
+        data = json.loads(datagram.decode('utf-8'))
+        print("received " + str(data) + " from " + address[0])
 
         #gather the user info
-        jData = self.validateData(datagram)
+        jData = self.validateData(data)
         if jData == None:
+            print("ill-formed datagram")
             return
         jData['public-ip'] = address[0]
         jData['public-port'] = address[1]
         
-        #register server if need be
+        #register server if tat's what we're doing
         if jData['registering-server'] == True:
             #store the server by its user-name
-            self.server_hosts[jData['user-name']] = jData
-            print("servers updated: ")
-            print(self.server_hosts)
+            self.serverHosts[jData['user-name']] = jData
+            print("server list updated.")
+            print("    ->" + str(self.serverHosts))
 
-        #otherwise, we're joining a server and a client- HOLE PUNCH!
+        #otherwise, we're linking a server and a nonserver peer
         elif jData['registering-server'] == False:
-            print("joining: " + jData['server-name'])
-            if not jData['server-name'] in self.server_hosts.keys():
+            #check server exists
+            print("joining " + jData['user-name'] + " and " + jData['server-name'])
+            if not jData['server-name'] in self.serverHosts.keys():
                 print(jData['server-name'] + " not found")
                 return
-            serverJData = self.server_hosts[jData['server-name']]
+            #make handshake messages
+            serverJData = self.serverHosts[jData['server-name']]
             serverInfo = self.makeHandshakeJson(serverJData)
             clientInfo = self.makeHandshakeJson(jData)
+            #send them out
+            #beware that tuples become lists in json- peers will need to change them back to tuples
             self.transport.write(json.dumps(serverInfo).encode(), clientInfo['public-address'])
             self.transport.write(json.dumps(clientInfo).encode(), serverInfo['public-address'])
-            print("sent info to " + jData['server-name'] + " and " + jData['user-name'])
+            print("sent linking info to " + jData['server-name'] + " and " + jData['user-name'])
         
 
 if __name__ == '__main__':
-    reactor.listenUDP(PORT, ServerProtocol())
+    reactor.listenUDP(SERVER_PORT, ServerProtocol())
     reactor.run()
-
-
-
-
-#listen on a port
-
-#receive udp with user A data with registering-server==True
-#store data indexed by user-name
-
-#receive udp with user B data with registering-server==False
-#send A and B packets containing each other's info
-
-
-
-
-
-
-'''
-For now, for redshift, just focus on:
-    1) user A sends message to server registering itself, with requires-key as true
-    2) user B sends message to server requesting user A
-    3) server sends public and privates to A and B
-    4) user A and user B send udp packages until a udp pack is received on both - user B sends key as data
-    5) continue only if user A sees correct key
-    5) user A and B store the address of the packets they received- these are the server/client addresses
-    6) send heartbeats out every 15 seconds- just to keep NAT hole open
-
-
-
-
-'''
-
-
-'''
-#users send the following data to server to register/join
-datagram:
-    {
-      'registering-server': <bool>, #false if joining a server
-      'host-name': <string> #only if joining a server
-      'password': <string> #only if joining a server
-      'user-name': <string>,
-      'private-ip': <string>,  
-      'private-port': <int>,
-    }
-
-'''
