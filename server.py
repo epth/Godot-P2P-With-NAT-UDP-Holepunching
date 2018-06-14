@@ -46,13 +46,13 @@ class ServerProtocol(DatagramProtocol):
             else:
                 return
         #required for users seeking to join a server
-        requiredKeys = ['host-name', 'password']
-        for key in requiredKeys:
-            if key in jData:
-                ret[key] = jData[key]
-            else:
-                return
-
+        if not jData['registering-server']:
+            requiredKeys = ['host-name', 'password']
+            for key in requiredKeys:
+                if key in jData:
+                    ret[key] = jData[key]
+                else:
+                    return
         return ret    
 
 

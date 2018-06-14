@@ -34,6 +34,7 @@ class ClientProtocol(DatagramProtocol):
             'private-port': MY_PRIVATE_PORT
         }
         self.transport.write(json.dumps(data).encode(), (HANDSHAKE_SERVER_IP, HANDSHAKE_SERVER_PORT))
+        print("sent")
 
     def datagramReceived(self, datagram, host):
         pass
