@@ -6,7 +6,11 @@ from twisted.internet import reactor
 import sys
 import json
 
-PORT = 5160
+HANDSHAKE_SERVER_IP = '35.197.160.85'
+HANDSHAKE_SERVER_PORT = 5160
+MY_PRIVATE_PORT = 3334
+MY_PRIVATE_IP = '192.168.1.127'
+USER_NAME = 'euler'
 
 class ClientProtocol(DatagramProtocol):
     """
@@ -23,8 +27,13 @@ class ClientProtocol(DatagramProtocol):
         self.peer_init = False
         self.peer_connect = False
         self.peer_address = None
-        
-        self.transport.write(json.dumps({"this": False}).encode(), ("35.197.160.85", PORT))
+        data = {
+            'registering-server': True,
+            'user-name': USER_NAME,
+            'private-ip': MY_PRIVATE_IP,  
+            'private-port': MY_PRIVATE_PORT
+        }
+        self.transport.write(json.dumps(data).encode(), (HANDSHAKE_SERVER_IP, HANDSHAKE_SERVER_PORT))
 
     def datagramReceived(self, datagram, host):
         pass

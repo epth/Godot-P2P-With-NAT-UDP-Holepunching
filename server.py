@@ -20,7 +20,6 @@ UNTESTED because I can't figure out how to get this script server hosted anywher
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
 import json
-import bson
 import sys
 
 PORT = 5160
@@ -67,8 +66,7 @@ class ServerProtocol(DatagramProtocol):
 
     def datagramReceived(self, datagram, address):
         datagram = datagram.decode("utf-8")
-        print("received " + datagram + " from " + address[0])
-        """Handle incoming datagram messages."""
+        #print("received " + datagram + " from " + address[0])
 
         #gather the user info
         jData = self.validateData(datagram)
@@ -91,6 +89,8 @@ class ServerProtocol(DatagramProtocol):
             clientInfo = self.makeHandshakeJsonString(jData)
             self.transport.write(serverInfo, jData['public-address'])
             self.transport.write(clientInfo, serverJData['public-address'])
+
+        print(self.server_hosts)
 
 if __name__ == '__main__':
     reactor.listenUDP(PORT, ServerProtocol())
