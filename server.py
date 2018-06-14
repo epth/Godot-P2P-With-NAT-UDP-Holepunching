@@ -66,6 +66,7 @@ class ServerProtocol(DatagramProtocol):
         return json.dumps(ret)
 
     def datagramReceived(self, datagram, address):
+        datagram = datagram.decode("utf-8")
         print("received " + datagram + " from " + address[0])
         """Handle incoming datagram messages."""
 
