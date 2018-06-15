@@ -60,6 +60,7 @@ func _process(delta):
 				if _quit_on_handshake_server_error:
 					quit_connection()
 					emit_signal('error', jData['message'])
+					break
 			
 			#registration confirmation - only for server hosts
 			elif jData['type'] == 'confirming-registration':

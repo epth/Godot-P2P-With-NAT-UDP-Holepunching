@@ -46,12 +46,12 @@ class ServerProtocol(DatagramProtocol):
     def validateData(self, jData):
         """
         Checks whether all required keys are present.
-        Requires jData to have 'global-ip' and 'global-port' attached to send errors out
+        Handshake server should atach 'global-ip' and 'global-port'
         Returns json if good, None otherwise
         """
         ret = {}
         #required for all peers
-        requiredKeys = ['type', 'sender', 'local-ip', 'local-port']
+        requiredKeys = ['type', 'sender', 'local-ip', 'local-port', 'global-ip', 'global-port']
         for key in requiredKeys:
             if key in jData:
                 ret[key] = jData[key]
