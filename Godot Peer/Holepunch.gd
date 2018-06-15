@@ -81,12 +81,12 @@ func _process(delta):
 												   int(jData['local-address'][1])]
 						#send global-address query
 						var g_data = {'used-global': true}
-						_heartbeat_packets.add(HeartbeatPacket.new(user_name, peer_name, 
+						_heartbeat_packets.add(HeartbeatPacket.new(self.user_name, peer_name, 
 											   _socket, jData['global-address'],
 											   'local-global-inqury', g_data, 15, true))
 						#send local-address query
 						var l_data = {'used-global': false}
-						_heartbeat_packets.add(HeartbeatPacket.new(user_name, peer_name, 
+						_heartbeat_packets.add(HeartbeatPacket.new(self.user_name, peer_name, 
 											   _socket, jData['local-address'],
 										 	   'local-global-inqury', l_data, 15, true))
 						#add as uncomfirmed
@@ -98,7 +98,7 @@ func _process(delta):
 				#peer sends us. If it fails, they'll send again because it's in their heartbeat
 				var address = [_socket.get_packet_ip(), _socket.get_packet_port()]
 				#jData will get overwritten with the correct sender info
-				var mirrored = Packet.new(user_name, jData['sender'], _socket, address,
+				var mirrored = Packet.new(self.user_name, jData['sender'], _socket, address,
 										  'local-global-inquiry-response', jData)
 				mirrored.send()
 			
@@ -120,7 +120,7 @@ func _process(delta):
 						'address': successful_address
 					}
 					emit_signal('peer_confirmed', confirmed_peers[jData['sender']].duplicate())
-					_heartbeat_packets.add(HeartbeatPacket.new(user_name, peer_name, 
+					_heartbeat_packets.add(HeartbeatPacket.new(self.user_name, peer_name, 
 															  _socket, successful_address,
 											  				  'peer-check', {}, 15, false))
 			
@@ -130,7 +130,7 @@ func _process(delta):
 				var peer_name = jData['sender'] 
 				if confirmed_peers.has(peer_name):
 					var address = confirmed_peers[peer_name]['address']
-					var mirrored = Packet.new(user_name, peer_name, _socket, address,
+					var mirrored = Packet.new(self.user_name, peer_name, _socket, address,
 										  'peer-check-response', jData)
 					mirrored.send()
 			
@@ -179,12 +179,11 @@ func init_server(handshake_ip, handshake_port, local_ip, local_port,
 		'type': 'registering-server',
 		'local-ip': local_ip,
 		'local-port': local_port,
-		'user-name': user_name,
 		'seconds-before-expiry': seconds_registration_valid
 	}
 	#packet will be sent immediately, and every 15 seconds
 	var address = [handshake_ip, handshake_port]
-	var packet = HeartbeatPacket.new(server_name, _SERVER_NAME, _socket, address,
+	var packet = HeartbeatPacket.new(self.user_name, _SERVER_NAME, _socket, address,
 									 'registering-server', data, registration_refresh_rate, true)
 	_heartbeat_packets.add(packet)
 	
@@ -198,12 +197,11 @@ func init_client(handshake_ip, handshake_port, local_ip, local_port, user_name, 
 		'type': 'requesting-to-join-server',
 		'local-ip': local_ip,
 		'local-port': local_port,
-		'user-name': user_name,
 		'server_name': server_name
 	}
 	#packet will be sent immediately, and every 15 seconds
 	var address = [handshake_ip, handshake_port]
-	var packet = HeartbeatPacket.new(server_name, _SERVER_NAME, _socket, address,
+	var packet = HeartbeatPacket.new(self.user_name, _SERVER_NAME, _socket, address,
 									 'requesting-to-join-server', data, -1, true)
 	_heartbeat_packets.add(packet)
 
