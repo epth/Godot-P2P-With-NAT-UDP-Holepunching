@@ -57,6 +57,8 @@ class PacketContainer:
 				packet.reset_expiry()
 	func duplicate():
 		return packets.duplicate()
+	func clear():
+		packets = []
 
 
 
@@ -132,13 +134,21 @@ func _process(delta):
 						heartbeat_packets.remove_peer(packet.peer_name)
 						#todo: remove matching unconfirmed peers
 						#todo: remove confirmed matching peers
-		
-	while handshake_server_socket.get_available_packet_count() > 0: 
-		var array_bytes = socketUDP.get_packet()
-		var json_string = array_bytes.get_string_from_utf8()
-		var jData = JSON.parse(json_string)
-		if jData['type'] == 'confirming-registration':
-			heartbeat_packets.reset_expiry_for_peer(SERVER_NAME)
+	if 	handshake_server_socket:
+		while handshake_server_socket.get_available_packet_count() > 0: 
+			var array_bytes = handshake_server_socket.get_packet()
+			var json_string = array_bytes.get_string_from_utf8()
+			var jData = JSON.parse(json_string)
+			if jData['type'] == 'confirming-registration':
+				heartbeat_packets.reset_expiry_for_peer(SERVER_NAME)
+
+
+func give_up():
+	out("given up")
+	_join_server_button.disabled = false
+	_register_server_button.disabled = false
+	heartbeat_packets.clear()
+	handshake_server_socket = null
 
 #############################################################
 #############################################################
