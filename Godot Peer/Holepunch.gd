@@ -329,7 +329,8 @@ class _HeartBeatPacketContainer:
 	var _packets = []
 	
 	func add(packet):
-		"""add a heartbeat packet."""
+		"""add a heartbeat packet - replaces existing with same peer_name and type."""
+		remove(packet.peer_name, packet.type)
 		_packets.push_back(packet)
 	
 	func remove_peer(peer_name):

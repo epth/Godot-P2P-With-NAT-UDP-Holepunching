@@ -114,13 +114,13 @@ class ServerProtocol(DatagramProtocol):
         data = json.loads(datagram.decode('utf-8'))
         print("received " + str(data) + " from " + address[0])
 
+        jData['global-ip'] = address[0]
+        jData['global-port'] = address[1]
         #gather the user info
         jData = self.validateData(data)
         if jData == None:
             print("ill-formed datagram")
             return
-        jData['global-ip'] = address[0]
-        jData['global-port'] = address[1]
         
         #register server if that's what we're doing
         if jData['type'] == 'registering-server':

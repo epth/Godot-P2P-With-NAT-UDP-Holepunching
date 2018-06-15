@@ -35,7 +35,7 @@ func _ready():
 	_local_port_field.text = '3334'
 
 
-func _hole_punch_error(message):
+func _holepunch_error(message):
 	out("error: " + message)
 
 func _give_up(is_server):
