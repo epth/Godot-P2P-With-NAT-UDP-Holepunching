@@ -133,7 +133,7 @@ class ServerProtocol(DatagramProtocol):
             #beware that tuples become lists in json- peers will need to change them back to tuples
             self.transport.write(json.dumps(serverInfo).encode(), clientInfo['global-address'])
             self.transport.write(json.dumps(clientInfo).encode(), serverInfo['global-address'])
-            print("sent linking info to " + jData['server-name'] + " and " + jData['peer-name'])
+            print("sent linking info to " + jData['server-name'] + " and " + jData['sender'])
 
     def serverHostRefresh(self):
         serversToRemove = []

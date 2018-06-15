@@ -73,6 +73,7 @@ func _process(delta):
 			
 			#registration confirmation - only for server hosts
 			if jData['type'] == 'confirming-registration':
+				out("registration confirmed") 
 				heartbeat_packets.reset_expiry(SERVER_NAME, 'registering-server')
 			
 			#from server - the info of a peer to join with
@@ -119,11 +120,11 @@ func _process(delta):
 			elif jData['type'] == 'local-global-inquiry-response':
 				out("successful inquiry received")
 				var peer_name = jData['sender']
+				heartbeat_packets.remove(peer_name, 'local-global-inqury')
 				#check we know who this is
 				if unconfirmed_peers.has(peer_name):
 					var successful_address = null
 					#remove the inquiry from the heartbeat
-					heartbeat_packets.remove(peer_name, 'local-global-inqury')
 					#add as a confirmed peer
 					if jData['used-global']:
 						successful_address = unconfirmed_peers[peer_name]['global-address']
@@ -166,7 +167,9 @@ func init():
 			out("field missing: " + field)
 			return
 	#initialise server socket (returns false on error)
-	if not _init_server_socket():
+	socket = PacketPeerUDP.new()
+	if socket.listen(int(_local_port_field.text)) != OK:
+		out("invalid local port")
 		return
 	#create first data packet
 	local_ip = _local_ip_field.text
@@ -186,7 +189,8 @@ func init():
 		data['server-name'] = _join_servername_field.text
 	#packet will be sent immediately, and every 15 seconds
 	#the connection with the server will be closed for nonservers when they get a reply
-	heartbeat_packets.add(HeartbeatPacket.new(user_name, SERVER_NAME, socket, 
+	var address = [_handshake_ip_field.text, int(_handshake_port_field.text)]
+	heartbeat_packets.add(HeartbeatPacket.new(user_name, SERVER_NAME, socket, address,
 											  type, data, 15, true))
 	#update gui
 	_join_server_button.disabled = true
@@ -194,20 +198,6 @@ func init():
 	out("message sent to server of type: " + type)
 	
 
-
-
-
-
-func _init_server_socket():
-	"""start listening to handshake server. Returns false if init fails"""
-	#start listening
-	socket = PacketPeerUDP.new()
-	if socket.listen(int(_local_port_field.text)) != OK:
-		out("invalid local port")
-		return false
-	#set address for sending packets
-	socket.set_dest_address(_handshake_ip_field.text, int(_handshake_port_field.text))
-	return true
 
 
 #############################################################
@@ -364,7 +354,7 @@ class HeartBeatPacketContainer:
 		"""remove all packets for a given peer and type"""
 		for packet in _packets.duplicate():
 			if packet.peer_name == peer_name and packet.type == type:
-				_packets.remove(packet)
+				_packets.erase(packet)
 	
 	func reset_expiry_for_peer(peer_name):
 		"""reset all packets for a given peer"""
