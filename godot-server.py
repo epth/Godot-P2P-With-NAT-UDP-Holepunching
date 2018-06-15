@@ -57,7 +57,7 @@ class ServerProtocol(DatagramProtocol):
             else:
                 return
         #required for peers seeking to join a server
-        if jData['type'] == 'request-to-join-server':
+        if jData['type'] == 'requesting-to-join-server':
             requiredKeys = ['server-name']
             for key in requiredKeys:
                 if key in jData:
@@ -101,7 +101,7 @@ class ServerProtocol(DatagramProtocol):
         jData['global-port'] = address[1]
         
         #register server if tat's what we're doing
-        if jData['registering-server'] == True:
+        if jData['type'] == 'registering-server':
             #store the server by its user-name
             jData['removal-countdown'] = 2 
             self.serverHosts[jData['user-name']] = jData
@@ -109,7 +109,7 @@ class ServerProtocol(DatagramProtocol):
             print("    ->" + str(self.serverHosts))
 
         #otherwise, we're linking a server and a nonserver peer
-        elif jData['registering-server'] == False:
+        elif jData['type'] == 'requesting-to-join-server':
             #check server exists
             print("joining " + jData['user-name'] + " and " + jData['server-name'])
             if not jData['server-name'] in self.serverHosts.keys():

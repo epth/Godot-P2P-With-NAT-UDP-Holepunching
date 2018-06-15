@@ -10,13 +10,14 @@ class Packet:
 		self.udp_socket_instance = udp_socket_instance
 		self.data_as_json = data_as_json
 		self.data_as_json['type'] = type
+		self.type = type
 	func send():
 		var bin_data = JSON.print(self.data_as_json).to_utf8()
 		self.udp_socket_instance.put_packet(bin_data)
 
 class HeartbeatPacket extends Packet:
-	var tries_left
-	func _init().(peer_name, udp_socket_instance, type, data_as_json):
+	var tries_left = 3
+	func _init(peer_name, udp_socket_instance, type, data_as_json).(peer_name, udp_socket_instance, type, data_as_json):
 		pass
 	func send_and_decrement_tries_remaining():
 		"""returns number of tries left"""
@@ -25,18 +26,18 @@ class HeartbeatPacket extends Packet:
 
 
 class PacketContainer:
-	var _packets = []
+	var packets = []
 	func add(packet):
-		_packets.push_back(packet)
+		packets.push_back(packet)
 	func remove_with_peer_name(peer_name):
 		var packets_to_remove = []
-		for packet in _packets:
+		for packet in packets:
 			if packet.peer_name == peer_name:
 				packets_to_remove.push_back(packet)
 		for packet_to_remove in packets_to_remove:
-			_packets.erase(packet_to_remove)
+			packets.erase(packet_to_remove)
 	func duplicate():
-		return _packets.duplicate()
+		return packets.duplicate()
 
 
 
@@ -99,6 +100,8 @@ func _print_peers():
 func _process(delta):
 	time_keeper += delta
 	if time_keeper > SECONDS_BETWEEN_HEARTBEATS:
+		time_keeper = 0
+		print(heartbeat_packets.packets)
 		for packet in heartbeat_packets.duplicate():
 			if packet.tries_left < 1:
 				if not i_am_server:
@@ -119,6 +122,7 @@ func _process(delta):
 #            
 #############################################################
 func _register_server():
+	
 	if not self._init_server_socket():
 		return
 	if _register_servername_field.text.empty():
@@ -166,7 +170,7 @@ func _join_server():
 		'local-port': int(_local_port_field.text)
 	}
 	heartbeat_packets.add(HeartbeatPacket.new(SERVER_NAME, handshake_server_socket, 
-											  'request-to-join-server', data))
+											  'requesting-to-join-server', data))
 	_join_server_button.disabled = true
 	_register_server_button.disabled = true
 	out("sending request for info to handshake server")
@@ -193,4 +197,4 @@ func _init_server_socket():
 	#set address for sending packets
 	handshake_server_socket.set_dest_address(_handshake_ip_field.text, 
  											 int(_handshake_port_field.text))
-
+	return true
