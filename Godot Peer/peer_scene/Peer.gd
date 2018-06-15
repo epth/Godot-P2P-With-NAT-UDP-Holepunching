@@ -69,7 +69,7 @@ var heartbeat_packets = PacketContainer.new()
 var handshake_server_socket = null
 var time_keeper = 0
 var i_am_server = null
-const SECONDS_BETWEEN_HEARTBEATS = 3
+const SECONDS_BETWEEN_HEARTBEATS = 15
 const SERVER_NAME = null
 
 
@@ -137,12 +137,15 @@ func _register_server():
 		
 	var data = {
 		'user-name' : _register_servername_field.text,
+		'seconds-before-expiry': 60,
 		'local-ip': _local_ip_field.text,
 		'local-port': int(_local_port_field.text)
 	}
 	i_am_server = true
-	heartbeat_packets.add(HeartbeatPacket.new(SERVER_NAME, handshake_server_socket, 
-											  'registering-server', data))
+	var registration_packet = HeartbeatPacket.new(SERVER_NAME, handshake_server_socket, 
+											  	 'registering-server', data)
+	heartbeat_packets.add(registration_packet)
+	registration_packet.send()
 	_join_server_button.disabled = true
 	_register_server_button.disabled = true
 	out("sending registration to handshake server")
@@ -169,8 +172,11 @@ func _join_server():
 		'local-ip': _local_ip_field.text,
 		'local-port': int(_local_port_field.text)
 	}
-	heartbeat_packets.add(HeartbeatPacket.new(SERVER_NAME, handshake_server_socket, 
-											  'requesting-to-join-server', data))
+	var request_to_join_packet = HeartbeatPacket.new(SERVER_NAME, handshake_server_socket, 
+											  	 'requesting-to-join-server', data)
+	heartbeat_packets.add(request_to_join_packet)
+	request_to_join_packet.send()
+	heartbeat_packets.add(request_to_join_packet)
 	_join_server_button.disabled = true
 	_register_server_button.disabled = true
 	out("sending request for info to handshake server")

@@ -56,14 +56,18 @@ class ServerProtocol(DatagramProtocol):
                 ret[key] = jData[key]
             else:
                 return
-        #required for peers seeking to join a server
+        #required depending on type
         if jData['type'] == 'requesting-to-join-server':
             requiredKeys = ['server-name']
-            for key in requiredKeys:
-                if key in jData:
-                    ret[key] = jData[key]
-                else:
-                    return
+        elif jData['type'] == 'registering-server':
+            requiredKeys = ['seconds-before-expiry']
+        else:
+            requiredKeys = []
+        for key in requiredKeys:
+            if key in jData:
+                ret[key] = jData[key]
+            else:
+                return
         return ret    
 
 
@@ -103,7 +107,6 @@ class ServerProtocol(DatagramProtocol):
         #register server if tat's what we're doing
         if jData['type'] == 'registering-server':
             #store the server by its user-name
-            jData['removal-countdown'] = 2 
             self.serverHosts[jData['user-name']] = jData
             print("server list updated.")
             print("    ->" + str(self.serverHosts))
@@ -128,8 +131,8 @@ class ServerProtocol(DatagramProtocol):
     def serverHostRefresh(self):
         serversToRemove = []
         for serverName, serverInfo in self.serverHosts.items():
-            serverInfo['removal-countdown'] -= 1
-            if serverInfo['removal-countdown'] <= 0:
+            serverInfo['seconds-before-expiry'] -= 1
+            if serverInfo['seconds-before-expiry'] <= 0:
                 serversToRemove.append(serverName)
         for serverToRemove in serversToRemove:
             self.serverHosts.pop(serverToRemove)
@@ -138,7 +141,7 @@ class ServerProtocol(DatagramProtocol):
 if __name__ == '__main__':
     listener = ServerProtocol()
     reactor.listenUDP(SERVER_PORT, listener)
-    task.LoopingCall(listener.serverHostRefresh).start(3.0)
+    task.LoopingCall(listener.serverHostRefresh).start(1.0)
     reactor.run()
 
 
