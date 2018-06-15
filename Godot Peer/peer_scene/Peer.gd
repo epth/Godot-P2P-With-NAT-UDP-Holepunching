@@ -5,6 +5,7 @@ class Packet:
 	var udp_socket_instance
 	var data_as_json
 	var type
+	
 	func _init(peer_name, udp_socket_instance, type, data_as_json):
 		self.peer_name = peer_name
 		self.udp_socket_instance = udp_socket_instance
@@ -16,26 +17,44 @@ class Packet:
 		self.udp_socket_instance.put_packet(bin_data)
 
 class HeartbeatPacket extends Packet:
-	var tries_left = 3
-	func _init(peer_name, udp_socket_instance, type, data_as_json).(peer_name, udp_socket_instance, type, data_as_json):
-		pass
-	func send_and_decrement_tries_remaining():
-		"""returns number of tries left"""
-		.send()
-		self.tries_left -= 1
-
+	var seconds_counter = 0
+	var seconds_before_expiry
+	var seconds_between_resends
+	func _init(peer_name, udp_socket_instance, type, data_as_json, 
+				seconds_between_resends, seconds_before_expiry).(peer_name, 
+				udp_socket_instance, type, data_as_json):
+		self.seconds_before_expiry = seconds_before_expiry
+		self.seconds_between_resends = seconds_between_resends
+	func seconds_tick():
+		seconds_counter += 1
+		if seconds_counter >= seconds_between_resends:
+			print("sent")
+			send()
+		if seconds_counter >= seconds_before_expiry:
+			print("packet expired")
+			return true
+		else:
+			print(seconds_before_expiry - seconds_counter)
+			return false
+	func reset_expiry():
+		print("expiry reset")
+		seconds_counter = 0
 
 class PacketContainer:
 	var packets = []
 	func add(packet):
 		packets.push_back(packet)
-	func remove_with_peer_name(peer_name):
+	func remove_peer(peer_name):
 		var packets_to_remove = []
 		for packet in packets:
 			if packet.peer_name == peer_name:
 				packets_to_remove.push_back(packet)
 		for packet_to_remove in packets_to_remove:
 			packets.erase(packet_to_remove)
+	func reset_expiry_for_peer(peer_name):
+		for packet in packets:
+			if packet.peer_name == peer_name:
+				packet.reset_expiry()
 	func duplicate():
 		return packets.duplicate()
 
@@ -67,7 +86,7 @@ var confirmed_peers = {}
 var unconfirmed_peers = {}
 var heartbeat_packets = PacketContainer.new()
 var handshake_server_socket = null
-var time_keeper = 0
+var seconds_ticker = 0
 var i_am_server = null
 const SECONDS_BETWEEN_HEARTBEATS = 15
 const SERVER_NAME = null
@@ -98,24 +117,28 @@ func _print_peers():
 
 
 func _process(delta):
-	time_keeper += delta
-	if time_keeper > SECONDS_BETWEEN_HEARTBEATS:
-		time_keeper = 0
-		print(heartbeat_packets.packets)
+	seconds_ticker += delta
+	if seconds_ticker > 1:
+		seconds_ticker = 0
 		for packet in heartbeat_packets.duplicate():
-			if packet.tries_left < 1:
+			var packet_expired = packet.seconds_tick()
+			if packet_expired:
 				if not i_am_server:
 					give_up()
 				else:
 					if packet.type == 'registering-server':
 						give_up()
 					else:
-						heartbeat_packets.remove_with_peer_name(packet.peer_name)
+						heartbeat_packets.remove_peer(packet.peer_name)
 						#todo: remove matching unconfirmed peers
 						#todo: remove confirmed matching peers
-			else:
-				packet.send_and_decrement_tries_remaining()
-				out("sent of type: " + packet.type)
+		
+	while handshake_server_socket.get_available_packet_count() > 0: 
+		var array_bytes = socketUDP.get_packet()
+		var json_string = array_bytes.get_string_from_utf8()
+		var jData = JSON.parse(json_string)
+		if jData['type'] == 'confirming-registration':
+			heartbeat_packets.reset_expiry_for_peer(SERVER_NAME)
 
 #############################################################
 #############################################################
@@ -143,7 +166,7 @@ func _register_server():
 	}
 	i_am_server = true
 	var registration_packet = HeartbeatPacket.new(SERVER_NAME, handshake_server_socket, 
-											  	 'registering-server', data)
+											  	 'registering-server', data, 15, 5)
 	heartbeat_packets.add(registration_packet)
 	registration_packet.send()
 	_join_server_button.disabled = true
@@ -173,7 +196,7 @@ func _join_server():
 		'local-port': int(_local_port_field.text)
 	}
 	var request_to_join_packet = HeartbeatPacket.new(SERVER_NAME, handshake_server_socket, 
-											  	 'requesting-to-join-server', data)
+											  	 'requesting-to-join-server', data, 15, 5)
 	heartbeat_packets.add(request_to_join_packet)
 	request_to_join_packet.send()
 	heartbeat_packets.add(request_to_join_packet)

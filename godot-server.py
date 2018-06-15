@@ -108,8 +108,12 @@ class ServerProtocol(DatagramProtocol):
         if jData['type'] == 'registering-server':
             #store the server by its user-name
             self.serverHosts[jData['user-name']] = jData
-            print("server list updated.")
-            print("    ->" + str(self.serverHosts))
+            print(jData['user-name'] + " added to server list")
+            #send back confirmation
+            data = {
+                'type': 'confirming-registration',
+            }
+            self.transport.write(json.dumps(data).encode(), jData['global-address'])
 
         #otherwise, we're linking a server and a nonserver peer
         elif jData['type'] == 'requesting-to-join-server':
