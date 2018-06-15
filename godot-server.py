@@ -55,6 +55,8 @@ class ServerProtocol(DatagramProtocol):
             if key in jData:
                 ret[key] = jData[key]
             else:
+                message = "missing info from packet data: " + key
+                self.sendError(self.makeGlobalAddress(jData), jData['sender'], message)
                 return
         #required depending on type
         if jData['type'] == 'requesting-to-join-server':
@@ -67,6 +69,8 @@ class ServerProtocol(DatagramProtocol):
             if key in jData:
                 ret[key] = jData[key]
             else:
+                message = "missing info from packet data: " + key
+                self.sendError(self.makeGlobalAddress(jData), jData['sender'], message)
                 return
         return ret    
 
@@ -89,6 +93,18 @@ class ServerProtocol(DatagramProtocol):
         ret['peer-name'] = jData['sender']
         return ret
 
+    def makeGlobalAddress(self, jData):
+        """joins jData['global-ip'] and jData['port'] into a tuple"""
+        return (jData['global-ip'], jData['global-port'])
+
+    def sendError(self, address, intendedRecipient, message):
+        """sends a packet of type server-error"""
+        data = {
+                'type': 'server-error',
+                'intended-recipient': intendedRecipient,
+                'message': message
+            }
+        self.transport.write(json.dumps(data).encode(), address)
 
     def datagramReceived(self, datagram, address):
         """
@@ -106,15 +122,22 @@ class ServerProtocol(DatagramProtocol):
         jData['global-ip'] = address[0]
         jData['global-port'] = address[1]
         
-        #register server if tat's what we're doing
+        #register server if that's what we're doing
         if jData['type'] == 'registering-server':
-            #store the server by its sender
-            self.serverHosts[jData['sender']] = jData
-            print(jData['sender'] + " added to server list")
+            #reject if a server exists with different address
+            if jData['user-name'] in self.serverHosts.keys():
+                existingAddress =  self.makeGlobalAddress(self.serverHosts[jData['user-name']])
+                newAddress = self.makeGlobalAddress(jData)
+                if newAddress != existingAddress:
+                    self.sendError(newAddress, jData['user-name'], "server already exists")
+                    return
+            #store the server by its user-name
+            self.serverHosts[jData['user-name']] = jData
+            print(jData['user-name'] + " added to server list")
             #send back confirmation
             data = {
                 'type': 'confirming-registration',
-                'intended-recipient': jData['sender']
+                'intended-recipient': jData['user-name']
             }
             self.transport.write(json.dumps(data).encode(), address)
             print("sent confirmation")
@@ -122,9 +145,11 @@ class ServerProtocol(DatagramProtocol):
         #otherwise, we're linking a server and a nonserver peer
         elif jData['type'] == 'requesting-to-join-server':
             #check server exists
-            print("joining " + jData['sender'] + " and " + jData['server-name'])
+            print("joining " + jData['user-name'] + " and " + jData['server-name'])
             if not jData['server-name'] in self.serverHosts.keys():
-                print(jData['server-name'] + " not found")
+                message = jData['server-name'] + " not found"
+                print(message)
+                self.sendError(self.makeGlobalAddress(jData), jData['sender'], message)
                 return
             #make handshake messages
             serverJData = self.serverHosts[jData['server-name']]
@@ -136,7 +161,7 @@ class ServerProtocol(DatagramProtocol):
             #beware that tuples become lists in json- peers will need to change them back to tuples
             self.transport.write(json.dumps(serverInfo).encode(), clientInfo['global-address'])
             self.transport.write(json.dumps(clientInfo).encode(), serverInfo['global-address'])
-            print("sent linking info to " + jData['server-name'] + " and " + jData['sender'])
+            print("sent linking info to " + jData['server-name'] + " and " + jData['user-name'])
 
     def serverHostRefresh(self):
         serversToRemove = []
