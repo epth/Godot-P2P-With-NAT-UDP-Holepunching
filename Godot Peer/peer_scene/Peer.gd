@@ -1,5 +1,13 @@
 extends Panel
 
+"""
+todo
+-----
+add server hijack prevention to server script
+	i.e. if a server registers, only replace existing if its the same ip and port.
+add button a functionality to print list of registered servers
+"""
+
 #get a handle to all these elements
 onready var _handshake_ip_field = find_node("HandshakeServerIPField")
 onready var _handshake_port_field = find_node("HandshakeServerPortField")
