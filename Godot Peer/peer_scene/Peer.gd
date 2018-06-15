@@ -48,15 +48,17 @@ func _peer_dropped(peer_name):
 
 func _new_peer(info):
 	out("New peer:")
-	out("    " + info['peer-name'] + " at " + str(info['adress']))
+	out("    " + info['peer-name'] + " at " + str(info['address']))
 
 func _packet_received(jData):
-	out("packet received of type:" + jData['type'])
+	out("packet received of type: " + jData['type'])
 	
 func _message_from_peer(jData):
 	out("message from " + jData['sender'])
 	out("   " + str(jData['message']))
 
+func _send_message_to_peer():
+	$HolePunch.send_unreliable_message_to_peer(_peer_username_field.text, _peer_message_field.text)
 
 func _register_server():
 	var handshake_ip = _handshake_ip_field.text
@@ -83,6 +85,5 @@ func _print_peers():
 
 func out(message):
 	"""prints a message to the gui console"""
-	_output_field.text += message + '\n'
-	#set scroll to end
-	_output_field.cursor_set_line(_output_field.get_line_count()+10, true)
+	_output_field.add_text(message)
+	_output_field.newline()

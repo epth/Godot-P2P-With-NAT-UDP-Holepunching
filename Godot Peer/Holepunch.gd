@@ -107,8 +107,9 @@ func _process(delta):
 			elif jData['type'] == 'local-global-inquiry-response':
 				var peer_name = jData['sender']
 				_heartbeat_packets.remove(peer_name, 'local-global-inqury')
-				#check we know who this is
-				if _unconfirmed_peers.has(peer_name):
+				#check we know who this is but that a pervious inquiry response 
+				#hasn't already come through (we want the fastest one)
+				if _unconfirmed_peers.has(peer_name) and not confirmed_peers.has(peer_name):
 					var successful_address = null
 					#remove the inquiry from the heartbeat
 					#add as a confirmed peer
@@ -172,6 +173,7 @@ func init_server(handshake_ip, handshake_port, local_ip, local_port,
 				 registration_refresh_rate=15):
 	_socket = PacketPeerUDP.new()
 	if _socket.listen(local_port) != OK:
+		quit_connection()
 		emit_signal('error', 'invalid listener port')
 		return
 	self.user_name = server_name
@@ -191,6 +193,8 @@ func init_server(handshake_ip, handshake_port, local_ip, local_port,
 func init_client(handshake_ip, handshake_port, local_ip, local_port, user_name, server_name):
 	_socket = PacketPeerUDP.new()
 	if _socket.listen(local_port) != OK:
+		quit_connection()
+		emit_signal('error', 'invalid listener port')
 		return
 	self.user_name = user_name
 	self.i_am_server = false
@@ -198,7 +202,7 @@ func init_client(handshake_ip, handshake_port, local_ip, local_port, user_name, 
 		'type': 'requesting-to-join-server',
 		'local-ip': local_ip,
 		'local-port': local_port,
-		'server_name': server_name
+		'server-name': server_name
 	}
 	#packet will be sent immediately, and every 15 seconds
 	var address = [handshake_ip, handshake_port]
@@ -270,7 +274,7 @@ class HeartbeatPacket extends Packet:
 	var _attempts_countdown
 	var _attempts_before_expiration
 	var _seconds_to_await_reply
-	var _seconds_between_resends
+	var _seconds_between_resends #set -1 to never resend 
 	var _awaiting_reply = false
 	func _init(user_name, peer_name, _socket, address, type, data_as_json, 
 				seconds_between_resends, send_immediately=false, 
@@ -305,7 +309,8 @@ class HeartbeatPacket extends Packet:
 				else:
 					_await_reply_countdown = _seconds_to_await_reply
 					send()
-		else:
+		#set _seconds_between_resends to -1 to avoid resends
+		elif _seconds_between_resends > 0:
 			_resend_countdown -= 1
 			if _resend_countdown <= 0:
 				#reset the expiration counters and send the packet
