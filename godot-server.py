@@ -129,8 +129,8 @@ class ServerProtocol(DatagramProtocol):
             #make handshake messages
             serverJData = self.serverHosts[jData['server-name']]
             serverInfo = self.makeHandshakeJson(serverJData)
-            serverInfo['intended-recipient'] = clientInfo['peer-name']
             clientInfo = self.makeHandshakeJson(jData)
+            serverInfo['intended-recipient'] = clientInfo['peer-name']
             clientInfo['intended-recipient'] = serverInfo['peer-name']
             #send them out
             #beware that tuples become lists in json- peers will need to change them back to tuples

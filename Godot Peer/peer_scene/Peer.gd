@@ -140,8 +140,10 @@ func _process(delta):
 											  				  'peer-check', {}, 15, false))
 					out("peer added:")
 					out("    " + str(confirmed_peers[jData['sender']]))
-					
+			
+			#sent from peer to keep connection open and check if we'e still here
 			elif jData['type'] == 'peer-check':
+				#send back a response
 				var peer_name = jData['sender'] 
 				if confirmed_peers.has(peer_name):
 					var address = confirmed_peers[peer_name]['address']
@@ -149,11 +151,13 @@ func _process(delta):
 										  'peer-check-response', jData)
 					mirrored.send()
 					out("responded to peer check by " + jData['sender'])
-					
+			
+			#sent by peer in response to peer check
 			elif jData['type'] == 'peer-check-response':
 				out("peer check good for " + jData['sender']) 
 				heartbeat_packets.reset_expiry(jData['sender'], 'peer-check')
-				
+			
+			#sent by peer- contains a message
 			elif jData['type'] == 'peer-message':
 				var peer_name = jData['sender']
 				var message = jData['message']
