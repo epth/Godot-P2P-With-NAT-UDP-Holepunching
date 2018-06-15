@@ -81,9 +81,9 @@ mouse_default_cursor_shape = 0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource( 1 )
-_sections_unfolded = [ "Rect", "Size Flags", "custom_constants" ]
+_sections_unfolded = [ "Margin", "Rect", "Size Flags", "custom_constants" ]
 
-[node name="Panel" type="MarginContainer" parent="." index="0"]
+[node name="Margin" type="MarginContainer" parent="." index="0"]
 
 anchor_left = 0.0
 anchor_top = 0.0
@@ -97,19 +97,24 @@ rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 0
 mouse_default_cursor_shape = 0
-size_flags_horizontal = 1
-size_flags_vertical = 1
+size_flags_horizontal = 3
+size_flags_vertical = 3
+custom_constants/margin_right = 1
+custom_constants/margin_top = 1
+custom_constants/margin_left = 1
+custom_constants/margin_bottom = 1
 _sections_unfolded = [ "Size Flags", "custom_constants" ]
 
-[node name="VBoxContainer" type="VBoxContainer" parent="Panel" index="0"]
+[node name="VBoxContainer" type="VBoxContainer" parent="Margin" index="0"]
 
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_left = 8.0
-margin_right = 984.0
-margin_bottom = 560.0
+margin_left = 1.0
+margin_top = 1.0
+margin_right = 983.0
+margin_bottom = 559.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 1
@@ -119,13 +124,13 @@ size_flags_vertical = 1
 alignment = 0
 _sections_unfolded = [ "Size Flags" ]
 
-[node name="Label5" type="Label" parent="Panel/VBoxContainer" index="0"]
+[node name="Label5" type="Label" parent="Margin/VBoxContainer" index="0"]
 
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_right = 976.0
+margin_right = 982.0
 margin_bottom = 14.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
@@ -139,14 +144,14 @@ percent_visible = 1.0
 lines_skipped = 0
 max_lines_visible = -1
 
-[node name="Label6" type="Label" parent="Panel/VBoxContainer" index="1"]
+[node name="Label6" type="Label" parent="Margin/VBoxContainer" index="1"]
 
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
 margin_top = 18.0
-margin_right = 976.0
+margin_right = 982.0
 margin_bottom = 32.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
@@ -160,15 +165,14 @@ lines_skipped = 0
 max_lines_visible = -1
 _sections_unfolded = [ "Size Flags" ]
 
-[node name="HBoxContainer" type="HBoxContainer" parent="Panel/VBoxContainer" index="2"]
+[node name="HBoxContainer7" type="HBoxContainer" parent="Margin/VBoxContainer" index="2"]
 
-editor/display_folded = true
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
 margin_top = 36.0
-margin_right = 976.0
+margin_right = 982.0
 margin_bottom = 60.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
@@ -177,8 +181,245 @@ mouse_default_cursor_shape = 0
 size_flags_horizontal = 1
 size_flags_vertical = 1
 alignment = 0
+_sections_unfolded = [ "Size Flags" ]
 
-[node name="Label" type="Label" parent="Panel/VBoxContainer/HBoxContainer" index="0"]
+[node name="Label" type="Label" parent="Margin/VBoxContainer/HBoxContainer7" index="0"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_top = 5.0
+margin_right = 78.0
+margin_bottom = 19.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 2
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 4
+text = "my local ip: "
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="LocalIPField" type="LineEdit" parent="Margin/VBoxContainer/HBoxContainer7" index="1"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 82.0
+margin_right = 482.0
+margin_bottom = 24.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+focus_mode = 2
+mouse_filter = 0
+mouse_default_cursor_shape = 1
+size_flags_horizontal = 3
+size_flags_vertical = 1
+focus_mode = 2
+context_menu_enabled = true
+placeholder_text = "find using ipconfig or similar"
+placeholder_alpha = 0.6
+caret_blink = true
+caret_blink_speed = 0.65
+caret_position = 0
+_sections_unfolded = [ "Placeholder", "Size Flags" ]
+
+[node name="Label2" type="Label" parent="Margin/VBoxContainer/HBoxContainer7" index="2"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 486.0
+margin_top = 5.0
+margin_right = 578.0
+margin_bottom = 19.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 2
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 4
+text = "my local port: "
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="LocalPortField" type="LineEdit" parent="Margin/VBoxContainer/HBoxContainer7" index="3"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 582.0
+margin_right = 982.0
+margin_bottom = 24.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+focus_mode = 2
+mouse_filter = 0
+mouse_default_cursor_shape = 1
+size_flags_horizontal = 3
+size_flags_vertical = 1
+focus_mode = 2
+context_menu_enabled = true
+placeholder_text = "any free port"
+placeholder_alpha = 0.6
+caret_blink = true
+caret_blink_speed = 0.65
+caret_position = 0
+_sections_unfolded = [ "Placeholder", "Size Flags" ]
+
+[node name="HBoxContainer8" type="HBoxContainer" parent="Margin/VBoxContainer" index="3"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_top = 64.0
+margin_right = 982.0
+margin_bottom = 88.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 1
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 1
+alignment = 0
+_sections_unfolded = [ "Size Flags" ]
+
+[node name="Label" type="Label" parent="Margin/VBoxContainer/HBoxContainer8" index="0"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_top = 5.0
+margin_right = 136.0
+margin_bottom = 19.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 2
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 4
+text = "handshake server ip: "
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="HandshakeServerIPField" type="LineEdit" parent="Margin/VBoxContainer/HBoxContainer8" index="1"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 140.0
+margin_right = 482.0
+margin_bottom = 24.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+focus_mode = 2
+mouse_filter = 0
+mouse_default_cursor_shape = 1
+size_flags_horizontal = 3
+size_flags_vertical = 1
+focus_mode = 2
+context_menu_enabled = true
+placeholder_alpha = 0.6
+caret_blink = true
+caret_blink_speed = 0.65
+caret_position = 0
+_sections_unfolded = [ "Placeholder", "Size Flags" ]
+
+[node name="Label2" type="Label" parent="Margin/VBoxContainer/HBoxContainer8" index="2"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 486.0
+margin_top = 5.0
+margin_right = 636.0
+margin_bottom = 19.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 2
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 4
+text = "handshake server port: "
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="HandshakeServerPortField" type="LineEdit" parent="Margin/VBoxContainer/HBoxContainer8" index="3"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 640.0
+margin_right = 982.0
+margin_bottom = 24.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+focus_mode = 2
+mouse_filter = 0
+mouse_default_cursor_shape = 1
+size_flags_horizontal = 3
+size_flags_vertical = 1
+focus_mode = 2
+context_menu_enabled = true
+placeholder_alpha = 0.6
+caret_blink = true
+caret_blink_speed = 0.65
+caret_position = 0
+_sections_unfolded = [ "Placeholder", "Size Flags" ]
+
+[node name="Label7" type="Label" parent="Margin/VBoxContainer" index="4"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_top = 92.0
+margin_right = 982.0
+margin_bottom = 106.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 2
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 4
+align = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+_sections_unfolded = [ "Size Flags" ]
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Margin/VBoxContainer" index="5"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_top = 110.0
+margin_right = 982.0
+margin_bottom = 134.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 1
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 1
+alignment = 0
+
+[node name="Label" type="Label" parent="Margin/VBoxContainer/HBoxContainer" index="0"]
 
 anchor_left = 0.0
 anchor_top = 0.0
@@ -198,14 +439,14 @@ percent_visible = 1.0
 lines_skipped = 0
 max_lines_visible = -1
 
-[node name="RegisterServerNameField" type="LineEdit" parent="Panel/VBoxContainer/HBoxContainer" index="1"]
+[node name="RegisterServerNameField" type="LineEdit" parent="Margin/VBoxContainer/HBoxContainer" index="1"]
 
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
 margin_left = 88.0
-margin_right = 976.0
+margin_right = 982.0
 margin_bottom = 24.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
@@ -222,16 +463,15 @@ caret_blink_speed = 0.65
 caret_position = 0
 _sections_unfolded = [ "Size Flags" ]
 
-[node name="HBoxContainer2" type="HBoxContainer" parent="Panel/VBoxContainer" index="3"]
+[node name="HBoxContainer2" type="HBoxContainer" parent="Margin/VBoxContainer" index="6"]
 
-editor/display_folded = true
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_top = 64.0
-margin_right = 976.0
-margin_bottom = 84.0
+margin_top = 138.0
+margin_right = 982.0
+margin_bottom = 158.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 1
@@ -240,7 +480,7 @@ size_flags_horizontal = 1
 size_flags_vertical = 1
 alignment = 0
 
-[node name="RegisterServerButton" type="Button" parent="Panel/VBoxContainer/HBoxContainer2" index="0"]
+[node name="RegisterServerButton" type="Button" parent="Margin/VBoxContainer/HBoxContainer2" index="0"]
 
 anchor_left = 0.0
 anchor_top = 0.0
@@ -264,15 +504,15 @@ flat = false
 align = 1
 _sections_unfolded = [ "Size Flags" ]
 
-[node name="Label" type="Label" parent="Panel/VBoxContainer" index="4"]
+[node name="Label" type="Label" parent="Margin/VBoxContainer" index="7"]
 
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_top = 88.0
-margin_right = 976.0
-margin_bottom = 102.0
+margin_top = 162.0
+margin_right = 982.0
+margin_bottom = 176.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 2
@@ -285,15 +525,15 @@ lines_skipped = 0
 max_lines_visible = -1
 _sections_unfolded = [ "Size Flags" ]
 
-[node name="Label2" type="Label" parent="Panel/VBoxContainer" index="5"]
+[node name="Label2" type="Label" parent="Margin/VBoxContainer" index="8"]
 
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_top = 106.0
-margin_right = 976.0
-margin_bottom = 120.0
+margin_top = 180.0
+margin_right = 982.0
+margin_bottom = 194.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 2
@@ -307,15 +547,15 @@ lines_skipped = 0
 max_lines_visible = -1
 _sections_unfolded = [ "Size Flags" ]
 
-[node name="Label3" type="Label" parent="Panel/VBoxContainer" index="6"]
+[node name="Label3" type="Label" parent="Margin/VBoxContainer" index="9"]
 
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_top = 124.0
-margin_right = 976.0
-margin_bottom = 138.0
+margin_top = 198.0
+margin_right = 982.0
+margin_bottom = 212.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 2
@@ -328,16 +568,15 @@ lines_skipped = 0
 max_lines_visible = -1
 _sections_unfolded = [ "Size Flags" ]
 
-[node name="HBoxContainer4" type="HBoxContainer" parent="Panel/VBoxContainer" index="7"]
+[node name="HBoxContainer4" type="HBoxContainer" parent="Margin/VBoxContainer" index="10"]
 
-editor/display_folded = true
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_top = 142.0
-margin_right = 976.0
-margin_bottom = 166.0
+margin_top = 216.0
+margin_right = 982.0
+margin_bottom = 240.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 1
@@ -346,7 +585,7 @@ size_flags_horizontal = 1
 size_flags_vertical = 1
 alignment = 0
 
-[node name="Label" type="Label" parent="Panel/VBoxContainer/HBoxContainer4" index="0"]
+[node name="Label" type="Label" parent="Margin/VBoxContainer/HBoxContainer4" index="0"]
 
 anchor_left = 0.0
 anchor_top = 0.0
@@ -366,14 +605,14 @@ percent_visible = 1.0
 lines_skipped = 0
 max_lines_visible = -1
 
-[node name="UserNameField" type="LineEdit" parent="Panel/VBoxContainer/HBoxContainer4" index="1"]
+[node name="JoinUserNameField" type="LineEdit" parent="Margin/VBoxContainer/HBoxContainer4" index="1"]
 
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
 margin_left = 76.0
-margin_right = 976.0
+margin_right = 982.0
 margin_bottom = 24.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
@@ -390,16 +629,15 @@ caret_blink_speed = 0.65
 caret_position = 0
 _sections_unfolded = [ "Size Flags" ]
 
-[node name="HBoxContainer3" type="HBoxContainer" parent="Panel/VBoxContainer" index="8"]
+[node name="HBoxContainer3" type="HBoxContainer" parent="Margin/VBoxContainer" index="11"]
 
-editor/display_folded = true
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_top = 170.0
-margin_right = 976.0
-margin_bottom = 194.0
+margin_top = 244.0
+margin_right = 982.0
+margin_bottom = 268.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 1
@@ -408,7 +646,7 @@ size_flags_horizontal = 1
 size_flags_vertical = 1
 alignment = 0
 
-[node name="Label" type="Label" parent="Panel/VBoxContainer/HBoxContainer3" index="0"]
+[node name="Label" type="Label" parent="Margin/VBoxContainer/HBoxContainer3" index="0"]
 
 anchor_left = 0.0
 anchor_top = 0.0
@@ -428,14 +666,14 @@ percent_visible = 1.0
 lines_skipped = 0
 max_lines_visible = -1
 
-[node name="JoinServerNameField" type="LineEdit" parent="Panel/VBoxContainer/HBoxContainer3" index="1"]
+[node name="JoinServerNameField" type="LineEdit" parent="Margin/VBoxContainer/HBoxContainer3" index="1"]
 
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
 margin_left = 88.0
-margin_right = 976.0
+margin_right = 982.0
 margin_bottom = 24.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
@@ -452,16 +690,16 @@ caret_blink_speed = 0.65
 caret_position = 0
 _sections_unfolded = [ "Size Flags" ]
 
-[node name="HBoxContainer5" type="HBoxContainer" parent="Panel/VBoxContainer" index="9"]
+[node name="HBoxContainer5" type="HBoxContainer" parent="Margin/VBoxContainer" index="12"]
 
 editor/display_folded = true
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_top = 198.0
-margin_right = 976.0
-margin_bottom = 218.0
+margin_top = 272.0
+margin_right = 982.0
+margin_bottom = 292.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 1
@@ -470,7 +708,7 @@ size_flags_horizontal = 1
 size_flags_vertical = 1
 alignment = 0
 
-[node name="JoinServerButton" type="Button" parent="Panel/VBoxContainer/HBoxContainer5" index="0"]
+[node name="JoinServerButton" type="Button" parent="Margin/VBoxContainer/HBoxContainer5" index="0"]
 
 anchor_left = 0.0
 anchor_top = 0.0
@@ -494,15 +732,15 @@ flat = false
 align = 1
 _sections_unfolded = [ "Size Flags" ]
 
-[node name="Label4" type="Label" parent="Panel/VBoxContainer" index="10"]
+[node name="Label4" type="Label" parent="Margin/VBoxContainer" index="13"]
 
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_top = 222.0
-margin_right = 976.0
-margin_bottom = 236.0
+margin_top = 296.0
+margin_right = 982.0
+margin_bottom = 310.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 2
@@ -515,15 +753,15 @@ lines_skipped = 0
 max_lines_visible = -1
 _sections_unfolded = [ "Size Flags" ]
 
-[node name="HBoxContainer6" type="HBoxContainer" parent="Panel/VBoxContainer" index="11"]
+[node name="HBoxContainer6" type="HBoxContainer" parent="Margin/VBoxContainer" index="14"]
 
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_top = 240.0
-margin_right = 976.0
-margin_bottom = 264.0
+margin_top = 314.0
+margin_right = 982.0
+margin_bottom = 338.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 1
@@ -532,13 +770,13 @@ size_flags_horizontal = 1
 size_flags_vertical = 1
 alignment = 0
 
-[node name="PeerMessageField" type="LineEdit" parent="Panel/VBoxContainer/HBoxContainer6" index="0"]
+[node name="PeerMessageField" type="LineEdit" parent="Margin/VBoxContainer/HBoxContainer6" index="0"]
 
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_right = 486.0
+margin_right = 489.0
 margin_bottom = 24.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
@@ -556,14 +794,14 @@ caret_blink_speed = 0.65
 caret_position = 0
 _sections_unfolded = [ "Placeholder", "Size Flags" ]
 
-[node name="HBoxContainer" type="HBoxContainer" parent="Panel/VBoxContainer/HBoxContainer6" index="1"]
+[node name="HBoxContainer" type="HBoxContainer" parent="Margin/VBoxContainer/HBoxContainer6" index="1"]
 
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_left = 490.0
-margin_right = 976.0
+margin_left = 493.0
+margin_right = 982.0
 margin_bottom = 24.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
@@ -574,13 +812,13 @@ size_flags_vertical = 1
 alignment = 0
 _sections_unfolded = [ "Size Flags" ]
 
-[node name="PeerMessageField2" type="LineEdit" parent="Panel/VBoxContainer/HBoxContainer6/HBoxContainer" index="0"]
+[node name="PeerUserNameField" type="LineEdit" parent="Margin/VBoxContainer/HBoxContainer6/HBoxContainer" index="0"]
 
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_right = 171.0
+margin_right = 174.0
 margin_bottom = 24.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
@@ -598,14 +836,14 @@ caret_blink_speed = 0.65
 caret_position = 0
 _sections_unfolded = [ "Placeholder", "Size Flags" ]
 
-[node name="Button2" type="Button" parent="Panel/VBoxContainer/HBoxContainer6/HBoxContainer" index="1"]
+[node name="SendMessageButton" type="Button" parent="Margin/VBoxContainer/HBoxContainer6/HBoxContainer" index="1"]
 
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_left = 175.0
-margin_right = 330.0
+margin_left = 178.0
+margin_right = 333.0
 margin_bottom = 24.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
@@ -622,14 +860,14 @@ text = "Send Message To Peer"
 flat = false
 align = 1
 
-[node name="Button" type="Button" parent="Panel/VBoxContainer/HBoxContainer6/HBoxContainer" index="2"]
+[node name="PrintPeersButton" type="Button" parent="Margin/VBoxContainer/HBoxContainer6/HBoxContainer" index="2"]
 
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_left = 334.0
-margin_right = 486.0
+margin_left = 337.0
+margin_right = 489.0
 margin_bottom = 24.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
@@ -646,15 +884,15 @@ text = "Print Peer Usernames"
 flat = false
 align = 1
 
-[node name="Panel" type="Panel" parent="Panel/VBoxContainer" index="12"]
+[node name="Panel" type="Panel" parent="Margin/VBoxContainer" index="15"]
 
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_top = 268.0
-margin_right = 976.0
-margin_bottom = 560.0
+margin_top = 342.0
+margin_right = 982.0
+margin_bottom = 558.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 0
@@ -662,9 +900,9 @@ mouse_default_cursor_shape = 0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 custom_styles/panel = SubResource( 1 )
-_sections_unfolded = [ "Theme", "custom_styles" ]
+_sections_unfolded = [ "Size Flags", "Theme", "custom_styles" ]
 
-[node name="VBoxContainer" type="VBoxContainer" parent="Panel/VBoxContainer/Panel" index="0"]
+[node name="VBoxContainer" type="VBoxContainer" parent="Margin/VBoxContainer/Panel" index="0"]
 
 anchor_left = 0.0
 anchor_top = 0.0
@@ -679,14 +917,14 @@ size_flags_vertical = 3
 alignment = 0
 _sections_unfolded = [ "Size Flags", "Visibility" ]
 
-[node name="MarginContainer" type="MarginContainer" parent="Panel/VBoxContainer/Panel/VBoxContainer" index="0"]
+[node name="MarginContainer" type="MarginContainer" parent="Margin/VBoxContainer/Panel/VBoxContainer" index="0"]
 
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_right = 976.0
-margin_bottom = 292.0
+margin_right = 982.0
+margin_bottom = 216.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 0
@@ -699,7 +937,7 @@ custom_constants/margin_left = 10
 custom_constants/margin_bottom = 10
 _sections_unfolded = [ "Size Flags", "custom_constants" ]
 
-[node name="Output" type="TextEdit" parent="Panel/VBoxContainer/Panel/VBoxContainer/MarginContainer" index="0"]
+[node name="Output" type="TextEdit" parent="Margin/VBoxContainer/Panel/VBoxContainer/MarginContainer" index="0"]
 
 anchor_left = 0.0
 anchor_top = 0.0
@@ -707,8 +945,8 @@ anchor_right = 0.0
 anchor_bottom = 0.0
 margin_left = 10.0
 margin_top = 10.0
-margin_right = 966.0
-margin_bottom = 282.0
+margin_right = 972.0
+margin_bottom = 206.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 focus_mode = 2

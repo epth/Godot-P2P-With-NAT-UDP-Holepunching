@@ -6,19 +6,18 @@
     Firewall must allow ingress and egress at SERVER_PORT = 5160
     Peers can send two kinds of messages:
         {
-            'registering-server': True,
-            'user-name': <unique string>
-            'private-ip': <string>
-            'private-port' <int>
+            'type': 'registering-server',
+            'user-name': <unique string>,
+            'local-ip': <string>,
+            'local-port' <int>
         }
     registers a server peer under the name user-name, and
         {
-            'registering-server': False,
-            'user-name': <unique string>
-            'private-ip': <string>
-            'private-port' <int>
+            'type': 'request-to-join-server',
+            'user-name': <unique string>,
+            'local-ip': <string>,
+            'local-port' <int>,
             'server-name': <unique string>
-            'server-password': <string>
         }
     initiates a linking between the sender and the server peer registered user server-name.
 
@@ -51,15 +50,15 @@ class ServerProtocol(DatagramProtocol):
         """
         ret = {}
         #required for all peers
-        requiredKeys = ['registering-server', 'user-name', 'private-ip', 'private-port']
+        requiredKeys = ['type', 'user-name', 'local-ip', 'local-port']
         for key in requiredKeys:
             if key in jData:
                 ret[key] = jData[key]
             else:
                 return
         #required for peers seeking to join a server
-        if not jData['registering-server']:
-            requiredKeys = ['server-name', 'server-password']
+        if jData['type'] == 'request-to-join-server':
+            requiredKeys = ['server-name']
             for key in requiredKeys:
                 if key in jData:
                     ret[key] = jData[key]
@@ -72,21 +71,17 @@ class ServerProtocol(DatagramProtocol):
     def makeHandshakeJson(self, jData):
         """
         Returns { 
-            'public-address': <address tuple>,  
-            'private-address': <address tuple>,
+            'global-address': <address tuple>,  
+            'local-address': <address tuple>,
             'user-name': <string>
         }
         from a full json dict
         """
         ret = {}
-        ret['public-address'] = (jData['public-ip'], jData['public-port'])
-        ret['private-address'] = (jData['private-ip'], jData['private-port'])
+        ret['global-address'] = (jData['global-ip'], jData['global-port'])
+        ret['local-address'] = (jData['local-ip'], jData['local-port'])
         ret['user-name'] = jData['user-name']
-        if 'server-password' in jData.keys():
-            ret['server-password'] = jData['server-password']
         return ret
-
-
 
 
     def datagramReceived(self, datagram, address):
@@ -102,8 +97,8 @@ class ServerProtocol(DatagramProtocol):
         if jData == None:
             print("ill-formed datagram")
             return
-        jData['public-ip'] = address[0]
-        jData['public-port'] = address[1]
+        jData['global-ip'] = address[0]
+        jData['global-port'] = address[1]
         
         #register server if tat's what we're doing
         if jData['registering-server'] == True:
@@ -126,8 +121,8 @@ class ServerProtocol(DatagramProtocol):
             clientInfo = self.makeHandshakeJson(jData)
             #send them out
             #beware that tuples become lists in json- peers will need to change them back to tuples
-            self.transport.write(json.dumps(serverInfo).encode(), clientInfo['public-address'])
-            self.transport.write(json.dumps(clientInfo).encode(), serverInfo['public-address'])
+            self.transport.write(json.dumps(serverInfo).encode(), clientInfo['global-address'])
+            self.transport.write(json.dumps(clientInfo).encode(), serverInfo['global-address'])
             print("sent linking info to " + jData['server-name'] + " and " + jData['user-name'])
 
     def serverHostRefresh(self):
