@@ -114,6 +114,7 @@ class ServerProtocol(DatagramProtocol):
                 'type': 'confirming-registration',
             }
             self.transport.write(json.dumps(data).encode(), address)
+            print("sent confirmation")
 
         #otherwise, we're linking a server and a nonserver peer
         elif jData['type'] == 'requesting-to-join-server':
