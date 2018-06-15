@@ -61,16 +61,17 @@ func _process(delta):
 					if packet.type == 'registering-server':
 						give_up()
 					else:
-						heartbeat_packets.remove_peer(packet.peer_name)
-						#todo: remove matching unconfirmed peers
-						#todo: remove confirmed matching peers
+						drop_peer(packet.peer_name)
+
 	
 	#process messages
 	if socket:
 		while socket.get_available_packet_count() > 0:
 			out("message received") 
 			var jData = get_var_from_bytes(socket.get_packet())
-			
+			if not jData.has('intended-recipient') or jData['intended-recipient'] != user_name:
+				out("wrong address")
+				return
 			#registration confirmation - only for server hosts
 			if jData['type'] == 'confirming-registration':
 				out("registration confirmed") 
@@ -134,8 +135,30 @@ func _process(delta):
 						'peer-name': peer_name, 
 						'address': successful_address
 					}
+					heartbeat_packets.add(HeartbeatPacket.new(user_name, peer_name, 
+															  socket, successful_address,
+											  				  'peer-check', {}, 15, false))
 					out("peer added:")
 					out("    " + str(confirmed_peers[jData['sender']]))
+					
+			elif jData['type'] == 'peer-check':
+				var peer_name = jData['sender'] 
+				if confirmed_peers.has(peer_name):
+					var address = confirmed_peers[peer_name]['address']
+					var mirrored = Packet.new(user_name, peer_name, socket, address,
+										  'peer-check-response', jData)
+					mirrored.send()
+					out("responded to peer check by " + jData['sender'])
+					
+			elif jData['type'] == 'peer-check-response':
+				out("peer check good for " + jData['sender']) 
+				heartbeat_packets.reset_expiry(jData['sender'], 'peer-check')
+				
+			elif jData['type'] == 'peer-message':
+				var peer_name = jData['sender']
+				var message = jData['message']
+				out("meesage from " + peer_name + ":")
+				out("    " + message)
 
 func give_up():
 	"""Resets everything, assuming we lost the connection completely"""
@@ -147,7 +170,16 @@ func give_up():
 	user_name = null
 	local_ip = null
 	local_port = null
+	confirmed_peers = {}
+	unconfirmed_peers = {}
 
+func drop_peer(peer_name):
+	heartbeat_packets.remove_peer(peer_name)
+	if unconfirmed_peers.has(peer_name):
+		unconfirmed_peers.erase(peer_name)
+	if confirmed_peers.has(peer_name):
+		confirmed_peers.erase(peer_name)
+	out("dropped " + peer_name)
 
 func init():
 	"""
@@ -216,10 +248,22 @@ func _join_server():
 
 
 func _send_message_to_peer():
-	pass
+	var peer_name = _peer_username_field.text
+	if confirmed_peers.has(peer_name):
+		var data = {
+			'message': _peer_message_field.text
+		}
+		var address = confirmed_peers[peer_name]['address']
+		var packet = Packet.new(user_name, peer_name, socket, address,
+								  'peer-message', data)
+		packet.send()
+		out("message sent to " + peer_name)
+
 
 func _print_peers():
-	out("blah")
+	out("connected peers: ")
+	for peer in confirmed_peers.values():
+		out("    " + peer['peer-name'])
 
 #############################################################
 #############################################################
@@ -229,7 +273,7 @@ func out(message):
 	"""prints a message to the gui console"""
 	_output_field.text += message + '\n'
 	#set scroll to end
-	_output_field.cursor_set_line(_output_field.get_line_count(), true)
+	_output_field.cursor_set_line(_output_field.get_line_count()+10, true)
 
 func get_var_from_bytes(array_bytes):
 	"""array_bytes -> string -> json"""
