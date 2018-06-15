@@ -50,7 +50,7 @@ class ServerProtocol(DatagramProtocol):
         """
         ret = {}
         #required for all peers
-        requiredKeys = ['type', 'user-name', 'local-ip', 'local-port']
+        requiredKeys = ['type', 'sender', 'local-ip', 'local-port']
         for key in requiredKeys:
             if key in jData:
                 ret[key] = jData[key]
@@ -75,16 +75,18 @@ class ServerProtocol(DatagramProtocol):
     def makeHandshakeJson(self, jData):
         """
         Returns { 
+            'type': 'providing-peer-handshake-info'
             'global-address': <address tuple>,  
             'local-address': <address tuple>,
-            'user-name': <string>
+            'peer-name': <string>
         }
         from a full json dict
         """
         ret = {}
+        ret['type'] = 'providing-peer-handshake-info'
         ret['global-address'] = (jData['global-ip'], jData['global-port'])
         ret['local-address'] = (jData['local-ip'], jData['local-port'])
-        ret['user-name'] = jData['user-name']
+        ret['peer-name'] = jData['sender']
         return ret
 
 
@@ -106,9 +108,9 @@ class ServerProtocol(DatagramProtocol):
         
         #register server if tat's what we're doing
         if jData['type'] == 'registering-server':
-            #store the server by its user-name
-            self.serverHosts[jData['user-name']] = jData
-            print(jData['user-name'] + " added to server list")
+            #store the server by its sender
+            self.serverHosts[jData['sender']] = jData
+            print(jData['sender'] + " added to server list")
             #send back confirmation
             data = {
                 'type': 'confirming-registration',
@@ -119,7 +121,7 @@ class ServerProtocol(DatagramProtocol):
         #otherwise, we're linking a server and a nonserver peer
         elif jData['type'] == 'requesting-to-join-server':
             #check server exists
-            print("joining " + jData['user-name'] + " and " + jData['server-name'])
+            print("joining " + jData['sender'] + " and " + jData['server-name'])
             if not jData['server-name'] in self.serverHosts.keys():
                 print(jData['server-name'] + " not found")
                 return
@@ -131,7 +133,7 @@ class ServerProtocol(DatagramProtocol):
             #beware that tuples become lists in json- peers will need to change them back to tuples
             self.transport.write(json.dumps(serverInfo).encode(), clientInfo['global-address'])
             self.transport.write(json.dumps(clientInfo).encode(), serverInfo['global-address'])
-            print("sent linking info to " + jData['server-name'] + " and " + jData['user-name'])
+            print("sent linking info to " + jData['server-name'] + " and " + jData['peer-name'])
 
     def serverHostRefresh(self):
         serversToRemove = []

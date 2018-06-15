@@ -20,11 +20,14 @@ onready var _output_field = find_node("Output", true)
 var confirmed_peers = {}
 var unconfirmed_peers = {}
 var heartbeat_packets = HeartBeatPacketContainer.new()
-var handshake_server_socket = null
+var socket = null
 var seconds_ticker = 0
 var i_am_server = null
 #keep null to differentiate between it and other peers
 const SERVER_NAME = null
+var user_name = null
+var local_ip = null
+var local_port = null
 
 
 func _ready():
@@ -62,18 +65,76 @@ func _process(delta):
 						#todo: remove matching unconfirmed peers
 						#todo: remove confirmed matching peers
 	
-	#process messages from server
-	if 	handshake_server_socket:
-		while handshake_server_socket.get_available_packet_count() > 0:
-			out("message received from server") 
-			var jData = get_var_from_bytes(handshake_server_socket.get_packet())
+	#process messages
+	if socket:
+		while socket.get_available_packet_count() > 0:
+			out("message received") 
+			var jData = get_var_from_bytes(socket.get_packet())
+			
+			#registration confirmation - only for server hosts
 			if jData['type'] == 'confirming-registration':
 				heartbeat_packets.reset_expiry(SERVER_NAME, 'registering-server')
+			
+			#from server - the info of a peer to join with
 			elif jData['type'] == 'providing-peer-handshake-info':
-				pass
-
-
-
+				out("handshake info provided")
+				#remove the request packet from the heartbeat
+				if not i_am_server:
+					heartbeat_packets.remove(SERVER_NAME, 'requesting-to-join-server')
+				#send out test packets to local and global addresses
+				#if we haven't already
+				var peer_name = jData['peer-name']
+				if not confirmed_peers.has(peer_name):
+					if not unconfirmed_peers.has(peer_name):
+						jData['global-address'] = [jData['global-address'][0], 
+												   int(jData['global-address'][1])]
+						jData['local-address'] = [jData['local-address'][0], 
+												   int(jData['local-address'][1])]
+						#send global-address query
+						var g_data = {'used-global': true}
+						heartbeat_packets.add(HeartbeatPacket.new(user_name, peer_name, 
+											   socket, jData['global-address'],
+											   'local-global-inqury', g_data, 15, true))
+						#send local-address query
+						var l_data = {'used-global': false}
+						heartbeat_packets.add(HeartbeatPacket.new(user_name, peer_name, 
+											   socket, jData['local-address'],
+										 	   'local-global-inqury', l_data, 15, true))
+						out("inquiry sent to peer")
+						#add as uncomfirmed
+						unconfirmed_peers[peer_name] = jData
+			
+			#from peer - we want to mirror back the successful packet
+			elif jData['type'] == 'local-global-inqury':
+				#note we don't add this into heartbeat- we just bounce back whatever the
+				#peer sends us. If it fails, they'll send again because it's in their heartbeat
+				var address = [socket.get_packet_ip(), socket.get_packet_port()]
+				#jData will get overwritten with the correct sender info
+				var mirrored = Packet.new(user_name, jData['sender'], socket, address,
+										  'local-global-inquiry-response', jData)
+				mirrored.send()
+				out("bounced back peer's inquiry")
+			
+			#from peer - the reflecion of the succesful inquiry
+			elif jData['type'] == 'local-global-inquiry-response':
+				out("successful inquiry received")
+				var peer_name = jData['sender']
+				#check we know who this is
+				if unconfirmed_peers.has(peer_name):
+					var successful_address = null
+					#remove the inquiry from the heartbeat
+					heartbeat_packets.remove(peer_name, 'local-global-inqury')
+					#add as a confirmed peer
+					if jData['used-global']:
+						successful_address = unconfirmed_peers[peer_name]['global-address']
+					else:
+						successful_address = unconfirmed_peers[peer_name]['local-address']
+					confirmed_peers[jData['sender']] = {
+						'peer-name': peer_name, 
+						'address': successful_address
+					}
+					out("peer added:")
+					out("    " + str(confirmed_peers[jData['sender']]))
 
 func give_up():
 	"""Resets everything, assuming we lost the connection completely"""
@@ -81,7 +142,10 @@ func give_up():
 	_join_server_button.disabled = false
 	_register_server_button.disabled = false
 	heartbeat_packets.clear()
-	handshake_server_socket = null
+	socket = null
+	user_name = null
+	local_ip = null
+	local_port = null
 
 
 func init():
@@ -105,22 +169,24 @@ func init():
 	if not _init_server_socket():
 		return
 	#create first data packet
+	local_ip = _local_ip_field.text
+	local_port = int(_local_port_field.text)
 	var data = {
-		'local-ip': _local_ip_field.text,
-		'local-port': int(_local_port_field.text)
+		'local-ip': local_ip,
+		'local-port': local_port
 	}
 	var type
 	if i_am_server:
+		user_name = _register_servername_field.text
 		type = 'registering-server'
-		data['user-name'] = _register_servername_field.text
 		data['seconds-before-expiry'] = 60
 	else:
+		user_name = _join_username_field.text
 		type = 'requesting-to-join-server'
-		data['user-name'] =  _join_username_field.text
 		data['server-name'] = _join_servername_field.text
 	#packet will be sent immediately, and every 15 seconds
 	#the connection with the server will be closed for nonservers when they get a reply
-	heartbeat_packets.add(HeartbeatPacket.new(SERVER_NAME, handshake_server_socket, 
+	heartbeat_packets.add(HeartbeatPacket.new(user_name, SERVER_NAME, socket, 
 											  type, data, 15, true))
 	#update gui
 	_join_server_button.disabled = true
@@ -135,13 +201,12 @@ func init():
 func _init_server_socket():
 	"""start listening to handshake server. Returns false if init fails"""
 	#start listening
-	handshake_server_socket = PacketPeerUDP.new()
-	if handshake_server_socket.listen(int(_local_port_field.text)) != OK:
+	socket = PacketPeerUDP.new()
+	if socket.listen(int(_local_port_field.text)) != OK:
 		out("invalid local port")
 		return false
 	#set address for sending packets
-	handshake_server_socket.set_dest_address(_handshake_ip_field.text, 
- 											 int(_handshake_port_field.text))
+	socket.set_dest_address(_handshake_ip_field.text, int(_handshake_port_field.text))
 	return true
 
 
@@ -191,20 +256,26 @@ class Packet:
 	Stores enough information about a packet to provide a simple send() function
 	"""
 	var peer_name #destination peer
-	var udp_socket_instance #PacketPeerUDP instance
+	var socket
+	var address #[ip, port] as [<string>, <int>]
 	var data_as_json
 	var type #e.g. 'registering-server'
 	
-	func _init(peer_name, udp_socket_instance, type, data_as_json):
+	
+	func _init(user_name, peer_name, socket, address, type, data_as_json):
 		"""adds the type to the data to be sent"""
 		self.peer_name = peer_name
-		self.udp_socket_instance = udp_socket_instance
+		self.socket = socket
+		self.address = address
 		self.data_as_json = data_as_json
 		self.data_as_json['type'] = type
+		self.data_as_json['sender'] = user_name
+		self.data_as_json['intended-recipient'] = peer_name
 		self.type = type
 	func send():
 		var bin_data = JSON.print(self.data_as_json).to_utf8()
-		self.udp_socket_instance.put_packet(bin_data)
+		self.socket.set_dest_address(address[0], address[1])
+		self.socket.put_packet(bin_data)
 
 class HeartbeatPacket extends Packet:
 	"""
@@ -222,11 +293,12 @@ class HeartbeatPacket extends Packet:
 	var _seconds_to_await_reply
 	var _seconds_between_resends
 	var _awaiting_reply = false
-	func _init(peer_name, udp_socket_instance, type, data_as_json, 
+	func _init(user_name, peer_name, socket, address, type, data_as_json, 
 				seconds_between_resends, send_immediately=false, 
 				seconds_to_await_reply=1,
-				attempts_before_expiration=3).(peer_name, 
-				udp_socket_instance, type, data_as_json):
+				attempts_before_expiration=3).(user_name, peer_name, 
+												socket, address, type, 
+												data_as_json):
 		self._seconds_between_resends = seconds_between_resends
 		self._resend_countdown = seconds_between_resends
 		self._seconds_to_await_reply = seconds_to_await_reply
@@ -288,6 +360,11 @@ class HeartBeatPacketContainer:
 		for packet in _packets.duplicate():
 			if packet.peer_name == peer_name:
 				_packets.erase(packet)
+	func remove(peer_name, type):
+		"""remove all packets for a given peer and type"""
+		for packet in _packets.duplicate():
+			if packet.peer_name == peer_name and packet.type == type:
+				_packets.remove(packet)
 	
 	func reset_expiry_for_peer(peer_name):
 		"""reset all packets for a given peer"""
