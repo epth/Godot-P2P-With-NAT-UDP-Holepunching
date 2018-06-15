@@ -46,6 +46,7 @@ class ServerProtocol(DatagramProtocol):
     def validateData(self, jData):
         """
         Checks whether all required keys are present.
+        Requires jData to have 'global-ip' and 'global-port' attached to send errors out
         Returns json if good, None otherwise
         """
         ret = {}
@@ -114,8 +115,8 @@ class ServerProtocol(DatagramProtocol):
         data = json.loads(datagram.decode('utf-8'))
         print("received " + str(data) + " from " + address[0])
 
-        jData['global-ip'] = address[0]
-        jData['global-port'] = address[1]
+        data['global-ip'] = address[0]
+        data['global-port'] = address[1]
         #gather the user info
         jData = self.validateData(data)
         if jData == None:
