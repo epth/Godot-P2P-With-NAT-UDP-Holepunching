@@ -113,7 +113,7 @@ class ServerProtocol(DatagramProtocol):
         if jData['type'] == 'requesting-server-list':
             data = {
                 'type': 'providing-server-list',
-                'server-list' : self.serverHosts.keys()
+                'server-list' : list(self.serverHosts.keys())
             }
             self.transport.write(json.dumps(data).encode(), address)
             print("sent server list")
