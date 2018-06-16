@@ -3,11 +3,16 @@ extends Node
 """
 todo: add X-scene support (eg a function that takes a bool (am i server) and confirmed peers
 		and continues heartbeating and signallin etc.)
-	: check whether addres smatches peer - if not, discard the received packet
 	: add get list of servers from handshake
 	: make local ip automatically retreived (with override)
 	: at the moment, bcause yourself isnt in the peer list, packets sent to self are dismissed. do we want that?
 """
+
+
+#############################################################
+#############################################################
+#                           SIGNALS                         #
+#############################################################
 
 signal peer_dropped
 signal connection_terminated 
@@ -20,21 +25,30 @@ signal reliable_message_timeout
 signal peer_check_timeout
 signal peer_handshake_timeout
 signal server_error
+signal received_server_list
 
+#############################################################
+#############################################################
+#                        CLASS VARIABLS                     #
+#############################################################
 
-#keep "" to differentiate between it and other peers
 const _SERVER_NAME = ""
 var _user_name = null
 var _i_am_server = null
 var _peers = null
-var _heartbeat_packets = null
-var _socket = null
+var _heartbeat_packets = HeartBeatPacketContainer.new()
+var _socket = PacketPeerUDP.new()
 var _seconds_ticker = 0
 #set false when we don't care what the server is sending us
 var _listening_to_handshake = true 
 var _local_address = null
 var _handshake_address = null
 
+
+#############################################################
+#############################################################
+#          PROCESS HEARTBEATS AND INCOMING                  #
+#############################################################
 
 func _process(delta):
 	_seconds_ticker += delta
@@ -45,7 +59,10 @@ func _process(delta):
 			for packet in _heartbeat_packets.get_packets_array_copy():
 				var packet_expired = packet.seconds_tick()
 				if packet_expired:
-					_heartbeat_packets.remove(packet.peer_name, packet.type)
+					_heartbeat_packets.remove_all_of_peer_and_type(packet.peer_name, packet.type)
+					if packet.type == 'request-server-list':
+						emit_signal('server_error', 'failed to get list from server')
+						return
 					if packet.type == 'registering-server':
 						quit_connection()
 						return
@@ -85,14 +102,23 @@ func _process(delta):
 				quit_connection()
 				break
 			
+			#we got a reply of server lists from a handshake server
+			elif jData['type'] == 'providing-server-list':
+				_heartbeat_packets.remove_all_of_type('requesting-server-list')
+				var info = {
+					'server-list': jData['server-list'],
+					'server-address': [_socket.get_packet_ip(), _socket.get_packet_port()]
+				}
+				emit_signal('received_server_list', info)
+			
 			#registration confirmation - only for server hosts
 			elif jData['type'] == 'confirming-registration':
-				_heartbeat_packets.reset_expiry(_SERVER_NAME, 'registering-server')
+				_heartbeat_packets.reset_expiry_for_all_of_peer_and_type(_SERVER_NAME, 'registering-server')
 			
 			#from server - peer info we can use to join P2P
 			elif jData['type'] == 'providing-peer-handshake-info':
 				#only matters if we asked to join - remove is forgiving
-				_heartbeat_packets.remove(_SERVER_NAME, 'requesting-to-join-server')
+				_heartbeat_packets.remove_all_of_peer_and_type(_SERVER_NAME, 'requesting-to-join-server')
 				#send out test packets to local and global addresses if we haven't already
 				var peer_name = jData['peer-name']
 				if _peers.get_peer(peer_name) == null:
@@ -114,7 +140,7 @@ func _process(delta):
 			#from peer - we have received the reflecion of the succesful inquiry
 			elif jData['type'] == 'local-global-inquiry-response':
 				var peer_name = jData['sender']
-				_heartbeat_packets.remove(peer_name, 'local-global-inqury')
+				_heartbeat_packets.remove_all_of_peer_and_type(peer_name, 'local-global-inqury')
 				#check we know who this is but that a pervious inquiry response 
 				#hasn't already come through (we want the fastest one)
 				var peer = _peers.get_peer(peer_name)
@@ -132,7 +158,7 @@ func _process(delta):
 			
 			#sent by peer in response to peer check
 			elif jData['type'] == 'peer-check-response':
-				_heartbeat_packets.reset_expiry(jData['sender'], 'peer-check')
+				_heartbeat_packets.reset_expiry_for_all_of_peer_and_type(jData['sender'], 'peer-check')
 			
 			#unreliable message sent by peer
 			elif jData['type'] == 'unreliable-peer-message':
@@ -153,48 +179,74 @@ func _process(delta):
 				var type = jData['type']
 				var key = 'message-id'
 				var value = jData['message-id']
-				_heartbeat_packets.remove_contains_key_value(peer_name, type, key, value)
+				_heartbeat_packets.remove_all_of_peer_and_type_with_key_value(peer_name, type, key, value)
 				emit_signal('peer_confirmed_reliable_message_received', jData)
 
+
+
+#############################################################
+#############################################################
+#                EXTERNALLY VISIBLE METHODS                 #
+#############################################################
+
+func get_user_name():
+	return _user_name
+	
+func get_peers():
+	if _peers:
+		return _peers.get_confirmed()
+
+func i_am_server():
+	return _i_am_server
+
+func send_unreliable_message_to_peer(peer_name, message):
+	"""send a message and who cares if it gets there"""
+	var peer = _peers.get_peer(peer_name)
+	if peer:
+		peer.send_unreliable_message(message)
+
+		
+func send_reliable_message_to_peer(peer_name, message):
+	"""send a message and care about whether it gets there"""
+	var peer = _peers.get_peer(peer_name)
+	if peer:
+		peer.send_reliable_message(message)
+
+func request_server_list(handshake_address):
+	"""requests server list from a handshake server"""
+	self._handshake_address = handshake_address
+	var type = 'request-server-list'
+	var packet = HeartbeatPacket.new(_user_name, _SERVER_NAME, _socket, 
+									 handshake_address, type, {})
+	_heartbeat_packets.add(packet)
 
 func quit_connection():
 	"""reset to an initial state with no peers and a null socket"""
 	_user_name = null
 	_peers = null
 	_i_am_server = null
-	_heartbeat_packets = null
-	_socket = null
+	var _heartbeat_packets = HeartBeatPacketContainer.new()
+	var _socket = PacketPeerUDP.new()
 	_local_address = null
 	_handshake_address = null
 	emit_signal('connection_terminated')
 
 
 func drop_connection_with_handshake_server():
+	"""after calling this, P2P is self-sustained"""
+	_heartbeat_packets.remove_all_of_peer(_SERVER_NAME)
 	_listening_to_handshake = false
 
 
 func drop_peer(peer_name):
-	_heartbeat_packets.remove_peer(peer_name)
+	"""remove peer"""
+	_heartbeat_packets.remove_all_of_peer(peer_name)
 	var peer = _peers.get_peer(peer_name)
 	_peers.remove(peer_name)
 	if peer:
 		emit_signal('peer_dropped', peer_name)
 
 
-func _common_init(user_name, handshake_ip, handshake_port, local_ip, local_port):
-	self._local_address = [local_ip, int(local_port)]
-	self._handshake_address = [handshake_ip, int(handshake_port)]
-	self._socket = PacketPeerUDP.new()
-	self._heartbeat_packets = _HeartBeatPacketContainer.new()
-	self._listening_to_handshake = true
-	self._user_name = user_name
-	self._peers = PeerContainer.new()
-	if _socket.listen(local_port) != OK:
-		quit_connection()
-		emit_signal('server_error', 'invalid listener port')
-		return false
-	return true
-	
 func init_server(handshake_ip, handshake_port, local_ip, local_port, 
 				 server_name, seconds_registration_valid=60, 
 				 registration_refresh_rate=15):
@@ -227,32 +279,37 @@ func init_client(handshake_ip, handshake_port, local_ip, local_port, user_name, 
 
 
 
-func send_unreliable_message_to_peer(peer_name, message):
-	var peer = _peers.get_peer(peer_name)
-	if peer:
-		peer.send_unreliable_message(message)
 
-		
-func send_reliable_message_to_peer(peer_name, message):
-	var peer = _peers.get_peer(peer_name)
-	if peer:
-		peer.send_reliable_message(message)
+#############################################################
+#############################################################
+#                        HELPER METHODS                     #
+#############################################################
 
-
-
-func get_peers():
-	if _peers:
-		return _peers.get_confirmed()
-
-func get_user_name():
-	return _user_name
-
-func i_am_server():
-	return _i_am_server
+func _common_init(user_name, handshake_ip, handshake_port, local_ip, local_port):
+	"""set up most of the initial variables. Returns fals on failure"""
+	if user_name == _SERVER_NAME:
+		emit_signal('server_error', 'invalid user name: ' + user_name)
+		return false
+	self._local_address = [local_ip, int(local_port)]
+	self._handshake_address = [handshake_ip, int(handshake_port)]
+	self._socket = PacketPeerUDP.new()
+	self._heartbeat_packets = HeartBeatPacketContainer.new()
+	self._listening_to_handshake = true
+	self._user_name = user_name
+	self._peers = PeerContainer.new()
+	if _socket.listen(local_port) != OK:
+		quit_connection()
+		emit_signal('server_error', 'invalid listener port')
+		return false
+	return true
 
 
 
 func _validate_incoming(packet, sender_address):
+	"""
+	returns null if validation failed. 
+	Note: does not validate for specific types
+	"""
 	#fail if we haven't initialised
 	if not _socket or not _peers:
 		return null
@@ -276,9 +333,12 @@ func _validate_incoming(packet, sender_address):
 	return null
 
 
+
+
+
 #############################################################
 #############################################################
-#                        HELPER CLASSES                     #
+#                        PACKET CLASSES                     #
 #############################################################
 
 
@@ -287,21 +347,22 @@ class Packet:
 	Stores enough information about a packet to provide a simple send() function
 	"""
 	var peer_name #destination peer
-	var _socket
 	var address #[ip, port] as [<string>, <int>]
+	var type
+	var _socket
 	var _data_as_json
-	var type #e.g. 'registering-server'
 
 	func _init(user_name, peer_name, _socket, address, type, data_as_json):
-		"""adds the type to the data to be sent"""
+		"""adds the type, sender and recipient to the data to be sent"""
 		self.peer_name = peer_name
-		self._socket = _socket
+		self.type = type
 		self.address = address
+		self._socket = _socket
 		self._data_as_json = data_as_json
 		self._data_as_json['type'] = type
 		self._data_as_json['sender'] = user_name
 		self._data_as_json['intended-recipient'] = peer_name
-		self.type = type
+		
 	func get_copy_of_json_data():
 		return _data_as_json.duplicate()
 	func send():
@@ -358,7 +419,6 @@ class HeartbeatPacket extends Packet:
 				else:
 					_await_reply_countdown = _seconds_to_await_reply
 					send()
-		#set _seconds_between_resends to -1 to avoid resends
 		elif _seconds_between_resends > 0:
 			_resend_countdown -= 1
 			if _resend_countdown <= 0:
@@ -371,35 +431,40 @@ class HeartbeatPacket extends Packet:
 		return false
 
 	func reset_expiry():
-		"""called when a reply has come io this packet"""
+		"""called when a reply has come for this packet"""
 		_awaiting_reply = false
 		_attempts_countdown = _attempts_before_expiration
 		_await_reply_countdown = _seconds_to_await_reply
 		_resend_countdown = _seconds_between_resends
 
-class _HeartBeatPacketContainer:
+class HeartBeatPacketContainer:
 	"""
 	Used to store and manage heartbeat packets.
 	"""
 	var _packets = []
 	
 	func add(packet, replace_same_peer_and_type = true):
-		"""add a heartbeat packet - replaces existing with same peer_name and type."""
+		"""add a heartbeat packet"""
 		if replace_same_peer_and_type:
-			remove(packet.peer_name, packet.type)
+			remove_all_of_peer_and_type(packet.peer_name, packet.type)
 		_packets.push_back(packet)
 	
-	func remove_peer(peer_name):
+	func remove_all_of_peer(peer_name):
 		"""removes all packets directed to a given peer"""
 		for packet in _packets.duplicate():
 			if packet.peer_name == peer_name:
 				_packets.erase(packet)
-	func remove(peer_name, type):
+	func remove_all_of_type(type):
+		"""removes all packets of a given type"""
+		for packet in _packets.duplicate():
+			if packet.type == type:
+				_packets.erase(packet)
+	func remove_all_of_peer_and_type(peer_name, type):
 		"""remove all packets for a given peer and type"""
 		for packet in _packets.duplicate():
 			if packet.peer_name == peer_name and packet.type == type:
 				_packets.erase(packet)
-	func remove_contains_key_value(peer_name, type, key, value):
+	func remove_all_of_peer_and_type_with_key_value(peer_name, type, key, value):
 		"""remove all packets for a given peer and type that have a key with value"""
 		for packet in _packets.duplicate():
 			if packet.peer_name == peer_name and packet.type == type:
@@ -407,13 +472,13 @@ class _HeartBeatPacketContainer:
 				if data.has(key) and data[key] == value:
 						_packets.erase(packet)
 		
-	func reset_expiry_for_peer(peer_name):
+	func reset_expiry_for_all_of_peer(peer_name):
 		"""reset all packets for a given peer"""
 		for packet in _packets:
 			if packet.peer_name == peer_name:
 				packet.reset_expiry()
 				
-	func reset_expiry(peer_name, type):
+	func reset_expiry_for_all_of_peer_and_type(peer_name, type):
 		"""reset all packets for a given peer and type"""
 		for packet in _packets:
 			if packet.peer_name == peer_name and packet.type == type:
@@ -426,6 +491,12 @@ class _HeartBeatPacketContainer:
 	func clear():
 		_packets = []
 
+
+
+#############################################################
+#############################################################
+#                        PEER CLASSES                       #
+#############################################################
 
 class Peer:
 	var _peer_name

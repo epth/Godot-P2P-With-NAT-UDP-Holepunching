@@ -13,6 +13,7 @@ onready var _peer_message_field = find_node("PeerMessageField")
 onready var _peer_username_field = find_node("PeerUserNameField")
 onready var _send_message_button = find_node("SendMessageButton")
 onready var _print_peers_button = find_node("PrintPeersButton")
+onready var _get_server_list_button = find_node("GetServerListButton")
 onready var _output_field = find_node("Output", true)
 
 func _ready():
@@ -21,6 +22,7 @@ func _ready():
 	_print_peers_button.connect('pressed', self, '_print_peers')
 	_register_server_button.connect('pressed', self, '_register_server')
 	_join_server_button.connect('pressed', self, '_join_server')
+	_get_server_list_button.connect('pressed', self, '_request_server_list')
 	#connect P2P signals
 	$HolePunch.connect('connection_terminated', self, '_give_up')
 	$HolePunch.connect('peer_dropped', self, '_peer_dropped')
@@ -29,11 +31,23 @@ func _ready():
 	$HolePunch.connect('received_unreliable_message_from_peer', self, '_message_from_peer')
 	$HolePunch.connect('received_reliable_message_from_peer', self, '_message_from_peer')
 	$HolePunch.connect('server_error', self, '_server_error')
+	$HolePunch.connect('received_server_list', self, '_print_server_list')
 	#defaults
 	_handshake_ip_field.text = '35.197.160.85'
 	_handshake_port_field.text = '5160'
 	_local_ip_field.text = '192.168.1.127'
 	_local_port_field.text = '3334'
+
+
+func _request_server_list():
+	var handshake_ip = _handshake_ip_field.text
+	var handshake_port = int(_handshake_port_field.text)
+	$HolePunch.request_server_list([handshake_ip, handshake_port])
+
+func _print_server_list(info):
+	out("received server list from " + info['server-address'])
+	for server in info['server-list']:
+		out("    server")
 
 
 func _server_error(message):

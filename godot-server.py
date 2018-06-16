@@ -47,7 +47,7 @@ class ServerProtocol(DatagramProtocol):
         """
         ret = {}
         #required for all peers
-        requiredKeys = ['type', 'sender', 'local-address', 'global-address']
+        requiredKeys = ['type', 'global-address']
         for key in requiredKeys:
             if key in jData:
                 ret[key] = jData[key]
@@ -57,9 +57,9 @@ class ServerProtocol(DatagramProtocol):
                 return
         #required depending on type
         if jData['type'] == 'requesting-to-join-server':
-            requiredKeys = ['server-name']
+            requiredKeys = ['server-name', 'local-address', 'sender']
         elif jData['type'] == 'registering-server':
-            requiredKeys = ['seconds-before-expiry']
+            requiredKeys = ['seconds-before-expiry', 'local-address', 'sender']
         else:
             requiredKeys = []
         for key in requiredKeys:
@@ -109,6 +109,16 @@ class ServerProtocol(DatagramProtocol):
             print("ill-formed datagram")
             return
         
+        #send back a list of servers if that's what we're doing
+        if jData['type'] == 'requesting-server-list':
+            data = {
+                'type': 'providing-server-list'
+                'intended-recipient': jData['sender']
+                'server-list' : self.serverHosts.keys()
+            }
+            self.transport.write(json.dumps(data).encode(), address)
+            print("sent server list")
+
         #register server if that's what we're doing
         if jData['type'] == 'registering-server':
             #reject if a server exists with different address
