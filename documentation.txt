@@ -1,0 +1,176 @@
+                                        
+                                        
+                                        User Documentation
+
+The godot-server and Holepunch.gd (as demonstrated in the Peer godot project) implement NAT UDP holepunching
+to enable two users behind NAT routers to connect and communicate in a P2P fashion. 
+
+The godot-server requires python 3, and can be run in the cloud (to facilitate online multiplayer) or 
+on a computer inside a local network (which restricts peers to the LAN). If you want to run it in the cloud,
+you will need to find a hosting service that provides a VM with a static IP. Heroku and similar offer only
+HTTP traffic. Running the script on a Google Cloud Compute machine with a static IP attached and firewalls open
+for egress and ingress through the server's ports is one option.
+
+To use Holepunch.gd, simply attach it to a node in your scene. Call either init_server or init_client
+to register a server or join a server, respectively. If there are no errors, peers will continue
+to send each other keepalive messages. 
+
+    Note that there is no distinction at the moment between
+    peer and client in this regard- every peer checks every peer- if any peerA can't connect to any other peerB
+    that peerA will quit the connection entirely, unless peerA is the host server in which case peerB is dropped
+    but other peers aren't notified (eventually peerB will drop itself after failing to get a response 
+    from server host peerA).
+
+
+Methods
+-------
+    get_user_name():
+        Returns user name
+    i_am_server():
+        True if host is server
+    get_peers():
+        Returns a dictionary of peers indexed by their peer names.
+        Each key is a dictionary itself that contains 'peer-name' 
+        as <string> and 'address' as [<string>, <int>]
+
+    quit_connection():
+        Reset to an initial state with no peers and a null socket
+
+    drop_connection_with_handshake_server():
+        Stop caring about server errors
+
+    drop_peer(peer_name):
+        Remove a peer if they existed
+
+    init_server(handshake_ip, handshake_port, local_ip, local_port, 
+				 server_name, seconds_registration_valid=60, 
+				 registration_refresh_rate=15):
+        Registers as server host identified by server_name with the given handshake server. 
+        Registration will be removed after seconds_registration_valid, so set 
+        registration_refresh_rate to less than that (remember UDP is unreliable- registration 
+        refresh packet might get lost). 
+        server_name will also be the server host's peer name
+
+    init_client(handshake_ip, handshake_port, local_ip, local_port, user_name, server_name):
+        Attempts to join server host identified by server_name on the given handshake server.
+        user_name will be this peer's peer name.
+
+    send_unreliable_message_to_peer(peer_name, message):
+        Sends a message to peer over standard UDP. The message can be any Variant.
+
+    send_reliable_message_to_peer(peer_name, message):
+        Sends a message to peer over standard UDP. The message can be any Variant.
+        We will get a receipt of delivery (emits peer_confirmed_reliable_message_received)
+        If we fail to ge the message through, emits signal reliable_message_timeout.
+
+
+
+
+Signals
+-------
+signal server_error
+    Emitted when there's been a server error.
+    Everything is reset by this point
+    Sends as argument an error message string
+signal peer_dropped
+    Sends as argument the name of the peer that was dropped.
+signal connection_terminated
+    Emitted whenever Holepunch gives up on curent socket
+    Everything is reset by this point
+signal packet_received
+    Emitted whenever a valid package comes in
+    Sends as argument the entire package json
+signal peer_confirmed
+    Emitted whenever a peer has successfully been added
+    Sends as argument a dict with 'peer-name' as <string> and 'address' as [<string>, <int>]
+signal received_unreliable_message_from_peer
+    Received a normal UDP message from peer sent by using send_unreliable_message_to_peer
+    Sends package data as argument
+signal received_reliable_message_from_peer
+    Received a reliable message from peer sent by using send_reliable_message_to_peer
+    Sends package data as argument. 
+signal peer_confirmed_reliable_message_received
+    We have received confirmation that peer has received reliable message
+    Sends package data as argument
+signal reliable_message_timeout
+    Our attempt to send a reliable message has failed
+    Sends as argument the json data
+signal peer_check_timeout
+    Peer has failed to reply to our peer checks- we have lost contact
+    Peer has been removed by this point
+    Sends peer name as argument
+signal peer_handshake_timeout
+    Failed to get a reply to our handshake message
+    Peer has been removed by this point
+    Sends peer name as argument
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                    Internal Documentation
+
+
+
+Message Types
+-------------
+    * type -> 'registering-server'
+    * sender -> <string>
+    * intended-recipient: <string>
+    * local-ip -> <string>
+    * local-port -> <int>
+    * seconds-before-expiry -> <int>
+
+    * type -> 'requesting-to-join-server'
+    * sender -> <string>
+    * intended-recipient: <string>
+    * local-ip -> <string>
+    * local-port -> <int>
+    * server-name -> <string>
+
+    * type -> 'server-error'
+    * intended-recipient: <string>
+    * message -> <string>
+
+    * type -> 'confirming-registration'
+    * intended-recipient: <string>
+
+    * type -> 'providing-peer-handshake-info'
+    * intended-recipient: <string>
+    * global-address: [<string>, <int>]
+    * local-address: [<string>, <int>]
+    * peer-name: <string>
+
+    * type -> 'local-global-inqury'
+    * sender -> <string>
+    * intended-recipient: <string>
+    * used-global: <bool>
+
+    * type -> 'local-global-inqury-response'
+    * sender -> <string>
+    * intended-recipient: <string>
+    * used-global: <bool>
+
+    * type -> 'peer-check'
+    * sender -> <string>
+    * intended-recipient: <string>
+
+    * type -> 'peer-check-response'
+    * sender -> <string>
+    * intended-recipient: <string>
+
+    * type -> 'peer-message'
+    * sender -> <string>
+    * intended-recipient: <string>
+    * message -> <var>

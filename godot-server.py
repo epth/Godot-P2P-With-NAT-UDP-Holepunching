@@ -7,16 +7,14 @@
     Peers can send two kinds of messages:
         {
             'type': 'registering-server',
-            'user-name': <unique string>,
-            'local-ip': <string>,
-            'local-port' <int>
+            'sender': <unique string>,
+            'local-address': [ip, port],
         }
     registers a server peer under the name user-name, and
         {
             'type': 'request-to-join-server',
-            'user-name': <unique string>,
-            'local-ip': <string>,
-            'local-port' <int>,
+            'sender': <unique string>,
+            'local-address': [ip, port],
             'server-name': <unique string>
         }
     initiates a linking between the sender and the server peer registered user server-name.
@@ -41,23 +39,21 @@ class ServerProtocol(DatagramProtocol):
         """Initialize with empy server list."""
         self.serverHosts = {}
 
-
-
     def validateData(self, jData):
         """
         Checks whether all required keys are present.
-        Handshake server should atach 'global-ip' and 'global-port'
+        Handshake server should atach 'global-address'
         Returns json if good, None otherwise
         """
         ret = {}
         #required for all peers
-        requiredKeys = ['type', 'sender', 'local-ip', 'local-port', 'global-ip', 'global-port']
+        requiredKeys = ['type', 'sender', 'local-address', 'global-address']
         for key in requiredKeys:
             if key in jData:
                 ret[key] = jData[key]
             else:
                 message = "missing info from packet data: " + key
-                self.sendError(self.makeGlobalAddress(jData), jData['sender'], message)
+                self.sendError(jData, message)
                 return
         #required depending on type
         if jData['type'] == 'requesting-to-join-server':
@@ -71,41 +67,32 @@ class ServerProtocol(DatagramProtocol):
                 ret[key] = jData[key]
             else:
                 message = "missing info from packet data: " + key
-                self.sendError(self.makeGlobalAddress(jData), jData['sender'], message)
+                self.sendError(jData, message)
                 return
         return ret    
 
 
 
     def makeHandshakeJson(self, jData):
-        """
-        Returns { 
-            'type': 'providing-peer-handshake-info'
-            'global-address': <address tuple>,  
-            'local-address': <address tuple>,
-            'peer-name': <string>
-        }
-        from a full json dict
-        """
+        """forms data into that which we want to send back"""
         ret = {}
         ret['type'] = 'providing-peer-handshake-info'
-        ret['global-address'] = (jData['global-ip'], jData['global-port'])
-        ret['local-address'] = (jData['local-ip'], jData['local-port'])
         ret['peer-name'] = jData['sender']
+        ret['global-address'] = jData['global-address']
+        ret['local-address'] = jData['local-address']
         return ret
 
-    def makeGlobalAddress(self, jData):
-        """joins jData['global-ip'] and jData['port'] into a tuple"""
-        return (jData['global-ip'], jData['global-port'])
-
-    def sendError(self, address, intendedRecipient, message):
+    def sendError(self, jData, message):
         """sends a packet of type server-error"""
         data = {
                 'type': 'server-error',
-                'intended-recipient': intendedRecipient,
+                'intended-recipient': jData['sender'],
                 'message': message
             }
-        self.transport.write(json.dumps(data).encode(), address)
+        self.transport.write(json.dumps(data).encode(), jData['global-address'])
+
+
+
 
     def datagramReceived(self, datagram, address):
         """
@@ -115,8 +102,7 @@ class ServerProtocol(DatagramProtocol):
         data = json.loads(datagram.decode('utf-8'))
         print("received " + str(data) + " from " + address[0])
 
-        data['global-ip'] = address[0]
-        data['global-port'] = address[1]
+        data['global-address'] = (address[0], address[1])
         #gather the user info
         jData = self.validateData(data)
         if jData == None:
@@ -127,10 +113,9 @@ class ServerProtocol(DatagramProtocol):
         if jData['type'] == 'registering-server':
             #reject if a server exists with different address
             if jData['sender'] in self.serverHosts:
-                existingAddress =  self.makeGlobalAddress(self.serverHosts[jData['sender']])
-                newAddress = self.makeGlobalAddress(jData)
-                if newAddress != existingAddress:
-                    self.sendError(newAddress, jData['sender'], "server already exists")
+                existingAddress =  self.serverHosts[jData['sender']]['global-address']
+                if jData['global-address'] != existingAddress:
+                    self.sendError(jData, "server already exists")
                     return
             #store the server by its sender
             self.serverHosts[jData['sender']] = jData
@@ -150,7 +135,7 @@ class ServerProtocol(DatagramProtocol):
             if not jData['server-name'] in self.serverHosts.keys():
                 message = jData['server-name'] + " not found"
                 print(message)
-                self.sendError(self.makeGlobalAddress(jData), jData['sender'], message)
+                self.sendError(jData, message)
                 return
             #make handshake messages
             serverJData = self.serverHosts[jData['server-name']]
