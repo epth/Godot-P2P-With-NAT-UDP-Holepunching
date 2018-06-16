@@ -60,7 +60,7 @@ func _process(delta):
 				var packet_expired = packet.seconds_tick()
 				if packet_expired:
 					_heartbeat_packets.remove_all_of_peer_and_type(packet.peer_name, packet.type)
-					if packet.type == 'request-server-list':
+					if packet.type == 'requesting-server-list':
 						emit_signal('server_error', 'failed to get list from server')
 						return
 					if packet.type == 'registering-server':
@@ -215,7 +215,7 @@ func send_reliable_message_to_peer(peer_name, message):
 func request_server_list(handshake_address):
 	"""requests server list from a handshake server"""
 	self._handshake_address = handshake_address
-	var type = 'request-server-list'
+	var type = 'requesting-server-list'
 	var packet = HeartbeatPacket.new(_user_name, _SERVER_NAME, _socket, 
 									 handshake_address, type, {})
 	_heartbeat_packets.add(packet)
