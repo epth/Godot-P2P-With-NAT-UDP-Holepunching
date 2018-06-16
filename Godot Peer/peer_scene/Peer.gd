@@ -38,16 +38,17 @@ func _ready():
 	_local_ip_field.text = '192.168.1.127'
 	_local_port_field.text = '3334'
 
-
 func _request_server_list():
+	
 	var handshake_ip = _handshake_ip_field.text
 	var handshake_port = int(_handshake_port_field.text)
+	out("request for servers sent to " + handshake_ip)
 	$HolePunch.request_server_list([handshake_ip, handshake_port])
 
 func _print_server_list(info):
-	out("received server list from " + info['server-address'])
+	out("received server list from " + info['server-address'][0])
 	for server in info['server-list']:
-		out("    server")
+		out("    " +server)
 
 
 func _server_error(message):

@@ -3,9 +3,7 @@ extends Node
 """
 todo: add X-scene support (eg a function that takes a bool (am i server) and confirmed peers
 		and continues heartbeating and signallin etc.)
-	: add get list of servers from handshake
-	: make local ip automatically retreived (with override)
-	: at the moment, bcause yourself isnt in the peer list, packets sent to self are dismissed. do we want that?
+	: add passwords
 """
 
 
@@ -278,8 +276,6 @@ func init_client(handshake_ip, handshake_port, local_ip, local_port, user_name, 
 	_heartbeat_packets.add(packet)
 
 
-
-
 #############################################################
 #############################################################
 #                        HELPER METHODS                     #
@@ -310,9 +306,6 @@ func _validate_incoming(packet, sender_address):
 	returns null if validation failed. 
 	Note: does not validate for specific types
 	"""
-	#fail if we haven't initialised
-	if not _socket or not _peers:
-		return null
 	#extract json - fail on error
 	var json_string = packet.get_string_from_utf8()
 	var result = JSON.parse(json_string)
