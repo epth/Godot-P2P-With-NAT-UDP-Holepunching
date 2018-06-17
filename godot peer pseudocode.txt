@@ -2,7 +2,6 @@ create a packetpeerudp for the handshake server
 unconfirmed_peers = {} #holds status and paketpeers for the peers- not the server
 confirmed_peers = {}
 heartbeat_packets = {} #include retry countdown until give up
-peers = {}
 
 
 _ready:

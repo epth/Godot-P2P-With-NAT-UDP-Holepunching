@@ -32,9 +32,8 @@ signal received_server_list
 #############################################################
 
 const _SERVER_NAME = ""
-const secs_between_peer_checks = 15
+const _secs_between_peer_checks = 15
 var _user_name = null
-var _password = ""
 var _i_am_server = null
 var _peers = null
 var _heartbeat_packets = HeartBeatPacketContainer.new()
@@ -42,12 +41,50 @@ var _socket = PacketPeerUDP.new()
 var _seconds_ticker = 0
 var _local_address = null
 var _handshake_server = null
+var _password = null
+var _seconds_server_registration_valid
+var _secs_between_registration_refresh
 
 
 #############################################################
 #############################################################
 #          PROCESS HEARTBEATS AND INCOMING                  #
 #############################################################
+
+
+func generate_random_alpha_numeric(length):
+	randomize()
+	var random_string = str(randf())
+	while random_string.length() < length:
+		random_string += random_string
+	return random_string.sha256_text().substr(0, length)
+
+
+func check_security_incoming(packet, sender_address):
+	"""
+	returns null if validation failed. 
+	Note: does not validate for specific types
+	"""
+	
+	var json_string = packet.get_string_from_utf8()
+	var result = JSON.parse(json_string)
+	if result.error != OK:
+		return null
+	
+	var jdata = result.result
+	var peer 
+	var is_valid = false
+	if jdata.has('sender') and _peers.get(jdata['sender']):
+		print("delegating to peer: " + jdata['sender'])
+		is_valid = _peers.get(jdata['sender']).check_security_incoming(jdata, sender_address)
+	elif _handshake_server:
+		print("delegating to handhsake")
+		is_valid = _handshake_server.check_security_incoming(jdata, sender_address)
+	
+	if is_valid:
+		return jdata
+	else:
+		return null
 
 
 func _process(delta):
@@ -96,7 +133,7 @@ func _process(delta):
 			#extract and validate
 			var packet = _socket.get_packet()
 			var sender_address = [_socket.get_packet_ip(), _socket.get_packet_port()]
-			var jdata = _validate_incoming(packet, sender_address)
+			var jdata = check_security_incoming(packet, sender_address)
 			if jdata == null:
 				return
 			emit_signal('packet_received', jdata.duplicate())
@@ -118,7 +155,19 @@ func _process(delta):
 			
 			#registration confirmation - only for server hosts
 			elif jdata['type'] == 'confirming-registration':
-				_heartbeat_packets.reset_expiry_for_all_of_peer_and_type(_SERVER_NAME, 'registering-server')
+				_heartbeat_packets.remove_all_of_peer_and_type(_SERVER_NAME, 'registering-server')
+				var data = {
+					'seconds-before-expiry': _seconds_server_registration_valid
+				}
+				var refresh = _handshake_server.make_heartbeat_packet('refreshing-server-registration',
+																	  data, false, 
+																	  _secs_between_registration_refresh)
+				_heartbeat_packets.add(refresh)
+				
+			
+			elif jdata['type'] == 'confirming-registration-refresh':
+				_heartbeat_packets.reset_expiry_for_all_of_peer_and_type(_SERVER_NAME, 
+																		'refreshing-server-registration')
 			
 			#from server - peer info we can use to join P2P
 			elif jdata['type'] == 'providing-peer-handshake-info':
@@ -127,7 +176,8 @@ func _process(delta):
 				#send out test packets to local and global addresses if we haven't already
 				var peer_name = jdata['peer-name']
 				if _peers.get(peer_name) == null:
-					var peer = Peer.new(self._user_name, peer_name, self._socket, self._heartbeat_packets,
+					var peer = Peer.new(self._user_name, peer_name, _password, 
+										self._socket, self._heartbeat_packets,
 										jdata['global-address'], jdata['local-address'])
 					_peers.add(peer)
 					peer.send_address_inquiry()
@@ -150,7 +200,7 @@ func _process(delta):
 				if peer and not peer.is_confirmed():
 					peer.confirm(jdata['used-global'])
 					emit_signal('peer_confirmed', peer.info())
-					var check = peer.make_heartbeat_packet('peer-check', {}, false, secs_between_peer_checks)
+					var check = peer.make_heartbeat_packet('peer-check', {}, false, _secs_between_peer_checks)
 					_heartbeat_packets.add(check)
 			
 			#sent from peer to keep connection open and check if we're still here
@@ -226,9 +276,11 @@ func request_server_list(handshake_address):
 	"""requests server list from a handshake server"""
 	if not _handshake_server or _handshake_server.address() != handshake_address:
 		_heartbeat_packets.remove_all_of_peer(_SERVER_NAME)
-		_handshake_server = Peer.new(_user_name, _SERVER_NAME, _socket, 
-									 _heartbeat_packets, handshake_address)
-	_heartbeat_packets.add(	_handshake_server.make_heartbeat_packet('requesting-server-list', {}))
+		_handshake_server = Peer.new(_user_name, _SERVER_NAME, generate_random_alpha_numeric(10),
+									  _socket, _heartbeat_packets, handshake_address)
+									
+	var data = {'password': _handshake_server.password()}
+	_heartbeat_packets.add(	_handshake_server.make_heartbeat_packet('requesting-server-list', data))
 
 func quit_connection():
 	"""reset to an initial state with no peers"""
@@ -239,6 +291,9 @@ func quit_connection():
 	_heartbeat_packets = HeartBeatPacketContainer.new()
 	_socket = PacketPeerUDP.new()
 	_local_address = null
+	_password = null
+	_seconds_server_registration_valid = null
+	_secs_between_registration_refresh = null
 	emit_signal('session_terminated')
 
 
@@ -260,27 +315,38 @@ func drop_peer(peer_name):
 
 
 func init_server(handshake_ip, handshake_port, local_ip, local_port, 
-				 server_name, seconds_registration_valid=60, 
-				 seconds_between_refresh=15):
+				 server_name, password=null, seconds_reg_valid=60, 
+				 seconds_between_reg_refresh=15):
 	if not _common_init(server_name, handshake_ip, handshake_port, local_ip, local_port):
 		return 
 	self._i_am_server = true
+	self._seconds_server_registration_valid = seconds_reg_valid
+	self._secs_between_registration_refresh = seconds_between_reg_refresh
+	if not password:
+		_password = server_name
+	else:
+		_password = password
 	var data = {
 		'local-address': self._local_address,
-		'seconds-before-expiry': seconds_registration_valid
+		'seconds-before-expiry': self._seconds_server_registration_valid,
+		'password': _handshake_server.password()
 	}
-	#packet will be sent immediately, and every seconds_between_refresh
-	var packet = _handshake_server.make_heartbeat_packet('registering-server', data, true, 
-														 seconds_between_refresh)
+	#packet will be sent immediately
+	var packet = _handshake_server.make_heartbeat_packet('registering-server', data, true)
 	_heartbeat_packets.add(packet)
 	
-func init_client(handshake_ip, handshake_port, local_ip, local_port, user_name, server_name):
+func init_client(handshake_ip, handshake_port, local_ip, local_port, user_name, server_name, password=null):
 	if not _common_init(user_name, handshake_ip, handshake_port, local_ip, local_port):
 		return
 	self._i_am_server = false
+	if not password:
+		_password = server_name
+	else:
+		_password = password
 	var data = {
 		'local-address': self._local_address,
-		'server-name': server_name
+		'server-name': server_name,
+		'password': _handshake_server.password()
 	}
 	#packet will be sent immediately
 	var packet = _handshake_server.make_heartbeat_packet('requesting-to-join-server', data, true)
@@ -303,43 +369,14 @@ func _common_init(user_name, handshake_ip, handshake_port, local_ip, local_port)
 	_user_name = user_name
 	_peers = PeerContainer.new()
 	var handshake_address = [handshake_ip, int(handshake_port)]
-	_handshake_server = Peer.new(_user_name, _SERVER_NAME, _socket, _heartbeat_packets, handshake_address)
+	_handshake_server = Peer.new(_user_name, _SERVER_NAME, generate_random_alpha_numeric(10),
+									  _socket, _heartbeat_packets, handshake_address)
 		
 	if _socket.listen(local_port) != OK:
 		quit_connection()
 		emit_signal('error', 'invalid listener port')
 		return false
 	return true
-
-
-
-func _validate_incoming(packet, sender_address):
-	"""
-	returns null if validation failed. 
-	Note: does not validate for specific types
-	"""
-	var json_string = packet.get_string_from_utf8()
-	var result = JSON.parse(json_string)
-	if result.error != OK:
-		return null
-	var jdata = result.result
-
-	if _handshake_server and sender_address == _handshake_server.address():
-			return jdata
-
-
-	if not jdata.has('sender'):
-		return null
-	var peer = _peers.get(jdata['sender'])
-	if peer:
-		if peer.local_address() == sender_address or peer.global_address() == sender_address:
-			if jdata.has('intended-recipient') and jdata['intended-recipient'] == _user_name:
-				return jdata
-	return null
-
-
-
-
 
 
 
@@ -375,9 +412,7 @@ class Packet:
 		self.address = address
 		self._socket = _socket
 		self._data_as_json = data_as_json
-		self._data_as_json['type'] = type
-		self._data_as_json['sender'] = user_name
-		self._data_as_json['intended-recipient'] = peer_name
+		
 		
 	func get_copy_of_json_data():
 		return _data_as_json.duplicate()
@@ -405,12 +440,14 @@ class HeartbeatPacket extends Packet:
 	var _seconds_between_resends #set -1 to never resend 
 	var _awaiting_reply = false
 	var _sent_once_already = false
+	#goes to shit if if not send_immediately and seconds_between_resends == null
 	func _init(user_name, peer_name, _socket, address, type, data_as_json, 
 				send_immediately=true, seconds_between_resends=null,
 				seconds_to_await_reply=1,
 				attempts_before_expiration=5).(user_name, peer_name, 
 												_socket, address, type, 
 												data_as_json):
+													
 		self._seconds_between_resends = seconds_between_resends
 		self._resend_countdown = seconds_between_resends
 		self._seconds_to_await_reply = seconds_to_await_reply
@@ -418,6 +455,7 @@ class HeartbeatPacket extends Packet:
 		self._attempts_before_expiration = attempts_before_expiration
 		self._attempts_countdown = attempts_before_expiration
 		if send_immediately:
+			print('sending ' + type +' imediately')
 			send()
 			self._awaiting_reply = true
 			self._sent_once_already = true
@@ -531,6 +569,7 @@ class HeartBeatPacketContainer:
 
 
 
+
 #############################################################
 #############################################################
 #                        PEER CLASSES                       #
@@ -542,15 +581,18 @@ class Peer:
 	var _your_name = null
 	var _local_address = null
 	var _global_address = null
+	var _password = null
 	var _ids_of_received_messaged = []
 	var _use_global = 'undecided'
 	var _sent_message_id_counter = 0
 	var _socket = null
 	var _heartbeat_container = null
 	var _i_am_handshake_server = null
-	func _init(your_name, peer_name, socket, heartbeat_container, global_address, local_address=null):
+	func _init(your_name, peer_name, password, socket, heartbeat_container, 
+				global_address, local_address=null):
 		self._your_name = your_name
 		self._peer_name = peer_name
+		self._password = password
 		self._socket = socket
 		self._heartbeat_container = heartbeat_container
 		self._i_am_handshake_server = peer_name == _SERVER_NAME
@@ -563,6 +605,8 @@ class Peer:
 		return _peer_name
 	func your_name():
 		return _your_name
+	func password():
+		return _password
 	func socket():
 		return _socket
 	func info():
@@ -638,7 +682,7 @@ class Peer:
 		return _ids_of_received_messaged.has(msg_id)
 	
 	func make_packet(type, data, custom_address=null):
-		data = _add_security_outgoing(data)
+		data = _add_security_outgoing(type, data)
 		if custom_address:
 			return Packet.new(your_name(), name(), socket(), custom_address, type, data)
 		else:
@@ -646,16 +690,129 @@ class Peer:
 		
 	func make_heartbeat_packet(type, data, send_immediately=true, seconds_between_resends=null, 
 							   custom_address=null):
-		data = _add_security_outgoing(data)
+		data = _add_security_outgoing(type, data)
 		if custom_address:
 			return HeartbeatPacket.new(your_name(), name(), socket(), custom_address, type, data, 
 										send_immediately, seconds_between_resends)
 		else:
 			return HeartbeatPacket.new(your_name(), name(), socket(), address(), type, data, 
 										send_immediately, seconds_between_resends)
+	
+	func _get_sorted_joined_string_elements_from_array(array):
+		var array_copy = []
+		for key in array:
+			if typeof(key) == TYPE_STRING:
+				array_copy.push_back(key)
+		array_copy.sort()
+		print("sorted array: " + str(array_copy))
+		var string_of_sorted_strings = ''
+		for key in array_copy:
+				string_of_sorted_strings += key
+		return string_of_sorted_strings
+		
+	func _add_security_outgoing(type, data):
+		data['type'] = type
+		data['sender'] = your_name()
+		data['intended-recipient'] = name()
+		var data_copy = data.duplicate()
+		data_copy['password'] = password()
+		var jstring = _get_sorted_joined_string_elements_from_array(data_copy.keys())
+		jstring += _get_sorted_joined_string_elements_from_array(data_copy.values())
 
-	func _add_security_outgoing(data):
+		var hash_string =jstring.sha256_text()
+		print("outgoing")
+		print(hash_string)
+		print(jstring)
+		
+		data['hash-string'] = hash_string
 		return data
+		
+	func check_security_incoming(jdata, sender_address):
+		print('incoming')
+		print('sender calculations : ' + jdata['hash-string'])
+		if is_confirmed() and sender_address != address():
+			print('confirmed and address mismatch.')
+			print('senders: ' + str(sender_address))
+			print('what i have: ' + str(address()))
+			return false
+		elif sender_address != local_address() and sender_address != global_address():
+			print('non confirmed and address mismatch')
+			return false
+		
+		print('here2')
+		if not jdata.has('intended-recipient') or jdata['intended-recipient'] != your_name():
+			return false
+		if not jdata.has('hash-string'):
+			return false
+		print('here3')
+		var sender_hash = jdata['hash-string']
+		jdata.erase('hash-string')
+		var jdata_copy = jdata.duplicate()
+		jdata_copy['password'] = password()
+		
+		var jstring = _get_sorted_joined_string_elements_from_array(jdata_copy.keys())
+		jstring += _get_sorted_joined_string_elements_from_array(jdata_copy.values())
+
+		var hash_string =jstring.sha256_text()
+		print('my calculations: ' + hash_string)
+		print(jstring)
+
+		
+		return hash_string == sender_hash
+		
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 class PeerContainer:

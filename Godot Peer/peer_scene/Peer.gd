@@ -54,6 +54,7 @@ func _request_server_list():
 
 func _print_server_list(info):
 	out("received server list from " + info['server-address'][0])
+	out("servers: ")
 	for server in info['server-list']:
 		out("    " +server)
 
