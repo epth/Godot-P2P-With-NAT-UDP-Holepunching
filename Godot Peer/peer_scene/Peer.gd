@@ -24,13 +24,13 @@ func _ready():
 	_join_server_button.connect('pressed', self, '_join_server')
 	_get_server_list_button.connect('pressed', self, '_request_server_list')
 	#connect P2P signals
-	$HolePunch.connect('connection_terminated', self, '_give_up')
+	$HolePunch.connect('session_terminated', self, '_give_up')
 	$HolePunch.connect('peer_dropped', self, '_peer_dropped')
 	$HolePunch.connect('peer_confirmed', self, '_new_peer')
 	$HolePunch.connect('packet_received', self, '_packet_received')
 	$HolePunch.connect('received_unreliable_message_from_peer', self, '_message_from_peer')
 	$HolePunch.connect('received_reliable_message_from_peer', self, '_message_from_peer')
-	$HolePunch.connect('server_error', self, '_server_error')
+	$HolePunch.connect('error', self, '_error')
 	$HolePunch.connect('received_server_list', self, '_print_server_list')
 	#defaults
 	_handshake_ip_field.text = '35.197.160.85'
@@ -51,7 +51,7 @@ func _print_server_list(info):
 		out("    " +server)
 
 
-func _server_error(message):
+func _error(message):
 	out("error: " + message)
 
 func _give_up():
@@ -74,7 +74,7 @@ func _message_from_peer(jData):
 	out("   " + str(jData['message']))
 
 func _send_message_to_peer():
-	$HolePunch.send_unreliable_message_to_peer(_peer_username_field.text, _peer_message_field.text)
+	$HolePunch.send_reliable_message_to_peer(_peer_username_field.text, _peer_message_field.text)
 
 func _register_server():
 	var handshake_ip = _handshake_ip_field.text
