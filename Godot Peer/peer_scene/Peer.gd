@@ -14,6 +14,7 @@ onready var _peer_username_field = find_node("PeerUserNameField")
 onready var _send_message_button = find_node("SendMessageButton")
 onready var _print_peers_button = find_node("PrintPeersButton")
 onready var _get_server_list_button = find_node("GetServerListButton")
+onready var _cut_handshake_button = find_node("CutConnectionWithHandshakeButton")
 onready var _output_field = find_node("Output", true)
 
 func _ready():
@@ -23,6 +24,7 @@ func _ready():
 	_register_server_button.connect('pressed', self, '_register_server')
 	_join_server_button.connect('pressed', self, '_join_server')
 	_get_server_list_button.connect('pressed', self, '_request_server_list')
+	_cut_handshake_button.connect('pressed', self, '_cut_handshake')
 	#connect P2P signals
 	$HolePunch.connect('session_terminated', self, '_give_up')
 	$HolePunch.connect('peer_dropped', self, '_peer_dropped')
@@ -38,6 +40,11 @@ func _ready():
 	_local_ip_field.text = '192.168.1.127'
 	_local_port_field.text = '3334'
 
+
+func _cut_handshake():
+	$HolePunch.drop_connection_with_handshake_server()
+	out("handshake cut: operating as full P2P")
+	
 func _request_server_list():
 	
 	var handshake_ip = _handshake_ip_field.text

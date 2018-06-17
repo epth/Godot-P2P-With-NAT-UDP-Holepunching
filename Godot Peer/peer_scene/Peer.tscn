@@ -889,7 +889,7 @@ anchor_right = 0.0
 anchor_bottom = 0.0
 margin_top = 342.0
 margin_right = 982.0
-margin_bottom = 558.0
+margin_bottom = 534.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 0
@@ -921,7 +921,7 @@ anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
 margin_right = 982.0
-margin_bottom = 216.0
+margin_bottom = 192.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 0
@@ -943,7 +943,7 @@ anchor_bottom = 0.0
 margin_left = 20.0
 margin_top = 20.0
 margin_right = 962.0
-margin_bottom = 196.0
+margin_bottom = 172.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 0
@@ -965,6 +965,30 @@ scroll_following = true
 selection_enabled = false
 override_selected_font_color = false
 _sections_unfolded = [ "Visibility", "custom_colors", "custom_constants", "custom_fonts" ]
+
+[node name="CutConnectionWithHandshakeButton" type="Button" parent="Margin/VBoxContainer" index="16"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_top = 538.0
+margin_right = 982.0
+margin_bottom = 558.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+focus_mode = 2
+mouse_filter = 0
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 1
+toggle_mode = false
+enabled_focus_mode = 2
+shortcut = null
+group = null
+text = "Cut Connection With Handshake Server"
+flat = false
+align = 1
 
 [node name="HolePunch" type="Node" parent="." index="1"]
 

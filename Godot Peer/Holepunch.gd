@@ -69,12 +69,20 @@ func _process(delta):
 						quit_connection()
 						return
 					if packet.type == 'local-global-inqury':
-						_peers.remove(packet.peer_name)
 						emit_signal('peer_handshake_timeout', packet.peer_name)
+						if _i_am_server:
+							#we're not 'dropping' the peer because they were 
+							#never really connected
+							_peers.remove(packet.peer_name)
+						else:
+							quit_connection()
 						return
 					if packet.type == 'peer-check':
-						_peers.remove(packet.peer_name)
 						emit_signal('peer_check_timeout', packet.peer_name)
+						if _i_am_server:
+							drop_peer(packet.peer_name)
+						else:
+							quit_connection()
 						return
 					if packet.type == 'reliable-peer-message':
 						emit_signal('reliable_message_timeout', packet.get_copy_of_json_data())
@@ -619,7 +627,6 @@ class Peer:
 		return HeartbeatPacket.new(your_name(), name(), socket(), address(), type, data, 
 									send_immediately, seconds_between_resends)
 		
-	
 
 class PeerContainer:
 	var _peers = {}
