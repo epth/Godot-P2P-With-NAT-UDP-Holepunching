@@ -90,7 +90,10 @@ func _register_server():
 	var local_ip = _local_ip_field.text
 	var local_port = int(_local_port_field.text)
 	var user_name = _username_field.text
-	$HolePunch.init_server(handshake_ip, handshake_port, local_ip, local_port, user_name)
+	var password = _password_field.text
+	if password == "":
+		password == null
+	$HolePunch.init_server(handshake_ip, handshake_port, local_ip, local_port, user_name, password)
 
 func _join_server():
 	var handshake_ip = _handshake_ip_field.text
@@ -99,7 +102,10 @@ func _join_server():
 	var local_port = int(_local_port_field.text)
 	var server_name = _server_field.text
 	var user_name = _username_field.text
-	$HolePunch.init_client(handshake_ip, handshake_port, local_ip, local_port, user_name, server_name) 
+	var password = _password_field.text
+	if password == "":
+		password == null
+	$HolePunch.init_client(handshake_ip, handshake_port, local_ip, local_port, user_name, server_name, password) 
 
 
 func _print_peers():

@@ -75,10 +75,8 @@ func check_security_incoming(packet, sender_address):
 	var peer 
 	var is_valid = false
 	if jdata.has('sender') and _peers.get(jdata['sender']):
-		print("delegating to peer: " + jdata['sender'])
 		is_valid = _peers.get(jdata['sender']).check_security_incoming(jdata, sender_address)
 	elif _handshake_server:
-		print("delegating to handhsake")
 		is_valid = _handshake_server.check_security_incoming(jdata, sender_address)
 	
 	if is_valid:
@@ -440,7 +438,7 @@ class HeartbeatPacket extends Packet:
 	var _seconds_between_resends #set -1 to never resend 
 	var _awaiting_reply = false
 	var _sent_once_already = false
-	#goes to shit if if not send_immediately and seconds_between_resends == null
+	#goes to shit if if not send_immediately and seconds_between_resends == null:
 	func _init(user_name, peer_name, _socket, address, type, data_as_json, 
 				send_immediately=true, seconds_between_resends=null,
 				seconds_to_await_reply=1,
@@ -455,7 +453,6 @@ class HeartbeatPacket extends Packet:
 		self._attempts_before_expiration = attempts_before_expiration
 		self._attempts_countdown = attempts_before_expiration
 		if send_immediately:
-			print('sending ' + type +' imediately')
 			send()
 			self._awaiting_reply = true
 			self._sent_once_already = true
@@ -676,7 +673,6 @@ class Peer:
 			for i in range(25, _ids_of_received_messaged.size()):
 				new_array.push_back(_ids_of_received_messaged[i])
 			_ids_of_received_messaged = new_array
-		print(_ids_of_received_messaged)
 	
 	func msg_history_contains(msg_id):
 		return _ids_of_received_messaged.has(msg_id)
@@ -704,7 +700,6 @@ class Peer:
 			if typeof(key) == TYPE_STRING:
 				array_copy.push_back(key)
 		array_copy.sort()
-		print("sorted array: " + str(array_copy))
 		var string_of_sorted_strings = ''
 		for key in array_copy:
 				string_of_sorted_strings += key
@@ -720,9 +715,6 @@ class Peer:
 		jstring += _get_sorted_joined_string_elements_from_array(data_copy.values())
 
 		var hash_string =jstring.sha256_text()
-		print("outgoing")
-		print(hash_string)
-		print(jstring)
 		
 		data['hash-string'] = hash_string
 		return data
@@ -731,20 +723,14 @@ class Peer:
 		print('incoming')
 		print('sender calculations : ' + jdata['hash-string'])
 		if is_confirmed() and sender_address != address():
-			print('confirmed and address mismatch.')
-			print('senders: ' + str(sender_address))
-			print('what i have: ' + str(address()))
 			return false
 		elif sender_address != local_address() and sender_address != global_address():
-			print('non confirmed and address mismatch')
 			return false
-		
-		print('here2')
+
 		if not jdata.has('intended-recipient') or jdata['intended-recipient'] != your_name():
 			return false
 		if not jdata.has('hash-string'):
 			return false
-		print('here3')
 		var sender_hash = jdata['hash-string']
 		jdata.erase('hash-string')
 		var jdata_copy = jdata.duplicate()
@@ -755,7 +741,6 @@ class Peer:
 
 		var hash_string =jstring.sha256_text()
 		print('my calculations: ' + hash_string)
-		print(jstring)
 
 		
 		return hash_string == sender_hash
