@@ -4,9 +4,9 @@ onready var _handshake_ip_field = find_node("HandshakeServerIPField")
 onready var _handshake_port_field = find_node("HandshakeServerPortField")
 onready var _local_ip_field = find_node("LocalIPField")
 onready var _local_port_field = find_node("LocalPortField")
-onready var _join_username_field = find_node("JoinUserNameField")
-onready var _register_servername_field = find_node("RegisterServerNameField")
-onready var _join_servername_field = find_node("JoinServerNameField")
+onready var _username_field = find_node("UserNameField")
+onready var _password_field = find_node("PasswordField")
+onready var _server_field = find_node("ServerField")
 onready var _register_server_button = find_node("RegisterServerButton")
 onready var _join_server_button = find_node("JoinServerButton")
 onready var _peer_message_field = find_node("PeerMessageField")
@@ -35,10 +35,11 @@ func _ready():
 	$HolePunch.connect('error', self, '_error')
 	$HolePunch.connect('received_server_list', self, '_print_server_list')
 	#defaults
-	_handshake_ip_field.text = '35.197.160.85'
+	_handshake_ip_field.text = '127.0.0.1'# '35.197.160.85'
 	_handshake_port_field.text = '5160'
 	_local_ip_field.text = '192.168.1.127'
 	_local_port_field.text = '3334'
+	_username_field.text = 'euler'
 
 
 func _cut_handshake():
@@ -46,7 +47,6 @@ func _cut_handshake():
 	out("handshake cut: operating as full P2P")
 	
 func _request_server_list():
-	
 	var handshake_ip = _handshake_ip_field.text
 	var handshake_port = int(_handshake_port_field.text)
 	out("request for servers sent to " + handshake_ip)
@@ -88,16 +88,16 @@ func _register_server():
 	var handshake_port = int(_handshake_port_field.text)
 	var local_ip = _local_ip_field.text
 	var local_port = int(_local_port_field.text)
-	var server_name = _register_servername_field.text
-	$HolePunch.init_server(handshake_ip, handshake_port, local_ip, local_port, server_name)
+	var user_name = _username_field.text
+	$HolePunch.init_server(handshake_ip, handshake_port, local_ip, local_port, user_name)
 
 func _join_server():
 	var handshake_ip = _handshake_ip_field.text
 	var handshake_port = int(_handshake_port_field.text)
 	var local_ip = _local_ip_field.text
 	var local_port = int(_local_port_field.text)
-	var server_name = _join_servername_field.text
-	var user_name = _join_username_field.text
+	var server_name = _server_field.text
+	var user_name = _username_field.text
 	$HolePunch.init_client(handshake_ip, handshake_port, local_ip, local_port, user_name, server_name) 
 
 
