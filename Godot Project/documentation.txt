@@ -1,5 +1,3 @@
-                                        
-                                        
                                         User Documentation
 
 The godot-server and Holepunch.gd (as demonstrated in the Peer godot project) implement NAT UDP holepunching
@@ -15,11 +13,8 @@ To use Holepunch.gd, simply attach it to a node in your scene. Call either init_
 to register a server or join a server, respectively. If there are no errors, peers will continue
 to send each other keepalive messages. 
 
-    Note that there is no distinction at the moment between
-    peer and client in this regard- every peer checks every peer- if any peerA can't connect to any other peerB
-    that peerA will quit the connection entirely, unless peerA is the host server in which case peerB is dropped
-    but other peers aren't notified (eventually peerB will drop itself after failing to get a response 
-    from server host peerA).
+
+Documentation below is out of date!
 
 
 Methods
