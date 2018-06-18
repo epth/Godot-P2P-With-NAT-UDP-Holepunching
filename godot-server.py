@@ -81,6 +81,7 @@ class ServerProtocol(DatagramProtocol):
                     'type': 'confirming-registration-refresh',
                 }
                 self.send(sender, jData['global-address'], data, self.serverHosts[sender]['password'])
+                print("registration refresed for " + jData['sender'])
             else:
                 self.sendError(jData, "registration refresh failed: " + sender + " not found")
 

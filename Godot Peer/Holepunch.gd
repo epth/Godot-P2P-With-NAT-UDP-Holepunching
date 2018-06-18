@@ -557,7 +557,7 @@ class Peer:
 	func confirm(use_global):
 		self._use_global = use_global
 	func is_confirmed():
-		return typeof(_use_global) == TYPE_BOOL and _use_global
+		return typeof(_use_global) == TYPE_BOOL
 	
 	func global_address():
 		return _global_address
