@@ -71,7 +71,7 @@ func _request_server_list():
 
 
 func _send_message_to_peer():
-	$HolePunch.send_reliable_message_to_peer(_peer_username_field.text, {'position': 23})
+	$HolePunch.send_reliable_message_to_peer(_peer_username_field.text, _peer_message_field.text)
 
 func _register_server():
 	var handshake_address = [_handshake_ip_field.text, int(_handshake_port_field.text)]
