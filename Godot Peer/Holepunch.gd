@@ -60,29 +60,28 @@ func generate_random_alpha_numeric(length):
 	return random_string.sha256_text().substr(0, length)
 
 
-func check_security_incoming(packet, sender_address):
+func get_incoming_packet():
 	"""
 	returns null if validation failed. 
 	Note: does not validate for specific types
 	"""
+	var bytes = _socket.get_packet()
+	var sender_address = [_socket.get_packet_ip(), _socket.get_packet_port()]
 	
-	var json_string = packet.get_string_from_utf8()
+	var json_string = bytes.get_string_from_utf8()
 	var result = JSON.parse(json_string)
 	if result.error != OK:
 		return null
 	
 	var jdata = result.result
 	var peer 
-	var is_valid = false
 	if jdata.has('sender') and _peers.get(jdata['sender']):
-		is_valid = _peers.get(jdata['sender']).check_security_incoming(jdata, sender_address)
+		peer = _peers.get(jdata['sender'])
 	elif _handshake_server:
-		is_valid = _handshake_server.check_security_incoming(jdata, sender_address)
-	
-	if is_valid:
-		return jdata
-	else:
+		peer = _handshake_server
+	if not peer:
 		return null
+	return peer.check_security_and_make_incoming_packet(jdata, sender_address)
 
 
 func _process(delta):
@@ -129,31 +128,30 @@ func _process(delta):
 	if _socket:
 		while _socket.get_available_packet_count() > 0:
 			#extract and validate
-			var packet = _socket.get_packet()
-			var sender_address = [_socket.get_packet_ip(), _socket.get_packet_port()]
-			var jdata = check_security_incoming(packet, sender_address)
-			if jdata == null:
+			var packet = get_incoming_packet()
+			if packet == null:
 				return
-			emit_signal('packet_received', jdata.duplicate())
+			var packet_data =  packet.get_copy_of_json_data()
+			emit_signal('packet_received', packet.get_copy_of_json_data())
 			
 			#server errors should terminate the connection
-			if jdata['type'] == 'server-error':
-				emit_signal('error', jdata['message'])
+			if packet.type == 'server-error':
+				emit_signal('error', packet_data['message'])
 				quit_connection()
 				break
 			
 			#we got a reply of server lists from a handshake server
-			elif jdata['type'] == 'providing-server-list':
+			elif packet.type == 'providing-server-list':
 				_heartbeat_packets.remove_all_of_type('requesting-server-list')
 				var info = {
-					'server-list': jdata['server-list'],
-					'server-address': [_socket.get_packet_ip(), _socket.get_packet_port()]
+					'server-list': packet_data['server-list'],
+					'server-address': packet.address
 				}
 				emit_signal('received_server_list', info)
 			
 			#registration confirmation - only for server hosts
-			elif jdata['type'] == 'confirming-registration':
-				_heartbeat_packets.remove_all_of_peer_and_type(_SERVER_NAME, 'registering-server')
+			elif packet.type == 'confirming-registration':
+				_heartbeat_packets.remove_all_of_peer_and_type(packet.peer_name, 'registering-server')
 				var data = {
 					'seconds-before-expiry': _seconds_server_registration_valid
 				}
@@ -163,76 +161,74 @@ func _process(delta):
 				_heartbeat_packets.add(refresh)
 				
 			
-			elif jdata['type'] == 'confirming-registration-refresh':
+			elif packet.type == 'confirming-registration-refresh':
 				_heartbeat_packets.reset_expiry_for_all_of_peer_and_type(_SERVER_NAME, 
 																		'refreshing-server-registration')
 			
 			#from server - peer info we can use to join P2P
-			elif jdata['type'] == 'providing-peer-handshake-info':
+			elif packet.type == 'providing-peer-handshake-info':
 				#only matters if we asked to join but remove is forgiving
-				_heartbeat_packets.remove_all_of_peer_and_type(_SERVER_NAME, 'requesting-to-join-server')
+				_heartbeat_packets.remove_all_of_peer_and_type(packet.peer_name, 'requesting-to-join-server')
 				#send out test packets to local and global addresses if we haven't already
-				var peer_name = jdata['peer-name']
+				var peer_name = packet_data['peer-name']
 				if _peers.get(peer_name) == null:
 					var peer = Peer.new(self._user_name, peer_name, _password, 
 										self._socket, self._heartbeat_packets,
-										jdata['global-address'], jdata['local-address'])
+										packet_data['global-address'], packet_data['local-address'])
 					_peers.add(peer)
 					peer.send_address_inquiry()
 			
 			#inquiry from peer - we want to mirror back the successful packet
-			elif jdata['type'] == 'local-global-inqury':
+			elif packet.type == 'local-global-inqury':
 				#note we don't add this into heartbeat- we just bounce back whatever the
 				#peer sends us. If it fails, they'll send again because it's in their heartbeat
-				var address = [_socket.get_packet_ip(), _socket.get_packet_port()]
-				var peer_name = jdata['sender']
-				_peers.get(peer_name).make_packet('local-global-inquiry-response', jdata, address).send()
+				var peer_name = packet.peer_name
+				var address = packet.address
+				_peers.get(peer_name).make_packet('local-global-inquiry-response', packet_data, address).send()
 			
 			#from peer - we have received the reflecion of the succesful inquiry
-			elif jdata['type'] == 'local-global-inquiry-response':
-				var peer_name = jdata['sender']
-				_heartbeat_packets.remove_all_of_peer_and_type(peer_name, 'local-global-inqury')
+			elif packet.type == 'local-global-inquiry-response':
+				_heartbeat_packets.remove_all_of_peer_and_type(packet.peer_name, 'local-global-inqury')
 				#check we know who this is but that a pervious inquiry response 
 				#hasn't already come through (we want the fastest one)
-				var peer = _peers.get(peer_name)
+				var peer = _peers.get(packet.peer_name)
 				if peer and not peer.is_confirmed():
-					peer.confirm(jdata['used-global'])
+					peer.confirm(packet_data['used-global'])
 					emit_signal('peer_confirmed', peer.info())
 					var check = peer.make_heartbeat_packet('peer-check', {}, false, _secs_between_peer_checks)
 					_heartbeat_packets.add(check)
 			
 			#sent from peer to keep connection open and check if we're still here
-			elif jdata['type'] == 'peer-check':
+			elif packet.type == 'peer-check':
 				#send back a response
-				var peer = _peers.get(jdata['sender'])
+				var peer = _peers.get(packet.peer_name)
 				if peer and peer.is_confirmed():
-					peer.make_packet('peer-check-response', jdata).send()
+					peer.make_packet('peer-check-response', packet_data).send()
 			
 			#sent by peer in response to peer check
-			elif jdata['type'] == 'peer-check-response':
-				_heartbeat_packets.reset_expiry_for_all_of_peer_and_type(jdata['sender'], 'peer-check')
+			elif packet.type == 'peer-check-response':
+				_heartbeat_packets.reset_expiry_for_all_of_peer_and_type(packet.peer_name, 'peer-check')
 			
 			#unreliable message sent by peer
-			elif jdata['type'] == 'unreliable-peer-message':
-				emit_signal('received_unreliable_message_from_peer', jdata)
+			elif packet.type == 'unreliable-peer-message':
+				emit_signal('received_unreliable_message_from_peer', packet.get_copy_of_json_data())
 				
 			#reliable message sent by peer
-			elif jdata['type'] == 'reliable-peer-message':
-				var peer = _peers.get(jdata['sender'])
+			elif packet.type == 'reliable-peer-message':
+				var peer = _peers.get(packet.peer_name)
 				if peer and peer.is_confirmed():
-					if not peer.msg_history_contains(jdata['message-id']):
-						peer.add_id_to_msg_history(jdata['message-id'])
-						emit_signal('received_reliable_message_from_peer', jdata)
-					peer.make_packet('reliable-peer-message-response', jdata).send()
+					if not peer.msg_history_contains(packet_data['message-id']):
+						peer.add_id_to_msg_history(packet_data['message-id'])
+						emit_signal('received_reliable_message_from_peer', packet.get_copy_of_json_data())
+					peer.make_packet('reliable-peer-message-response', packet_data).send()
 			
 			#sent by peer confirming they have received our reliable message
-			elif jdata['type'] == 'reliable-peer-message-response':
-				var peer_name = jdata['sender']
+			elif packet.type == 'reliable-peer-message-response':
 				var type = 'reliable-peer-message'
 				var key = 'message-id'
-				var value = jdata['message-id']
-				_heartbeat_packets.remove_all_of_peer_and_type_with_key_value(peer_name, type, key, value)
-				emit_signal('peer_confirmed_reliable_message_received', jdata)
+				var value = packet_data['message-id']
+				_heartbeat_packets.remove_all_of_peer_and_type_with_key_value(packet.peer_name, type, key, value)
+				emit_signal('peer_confirmed_reliable_message_received', packet.get_copy_of_json_data())
 
 
 
@@ -398,7 +394,7 @@ class Packet:
 	Stores enough information about a packet to provide a simple send() function
 	"""
 	var peer_name #destination peer
-	var address #[ip, port] as [<string>, <int>]
+	var address #[ip, port] as [<string>, <int>]\
 	var type
 	var _socket
 	var _data_as_json
@@ -715,22 +711,21 @@ class Peer:
 		jstring += _get_sorted_joined_string_elements_from_array(data_copy.values())
 
 		var hash_string =jstring.sha256_text()
-		
+		print('outgoing: ' + jstring)
 		data['hash-string'] = hash_string
 		return data
 		
-	func check_security_incoming(jdata, sender_address):
-		print('incoming')
-		print('sender calculations : ' + jdata['hash-string'])
+	func check_security_and_make_incoming_packet(jdata, sender_address):
 		if is_confirmed() and sender_address != address():
-			return false
+			return null
 		elif sender_address != local_address() and sender_address != global_address():
-			return false
-
+			return null
+		if not jdata.has('type'):
+			return null
 		if not jdata.has('intended-recipient') or jdata['intended-recipient'] != your_name():
-			return false
+			return null
 		if not jdata.has('hash-string'):
-			return false
+			return null
 		var sender_hash = jdata['hash-string']
 		jdata.erase('hash-string')
 		var jdata_copy = jdata.duplicate()
@@ -740,12 +735,15 @@ class Peer:
 		jstring += _get_sorted_joined_string_elements_from_array(jdata_copy.values())
 
 		var hash_string =jstring.sha256_text()
-		print('my calculations: ' + hash_string)
-
-		
-		return hash_string == sender_hash
-		
-	
+		print('incoming: ' + jstring)
+		print('sender hash : ' + sender_hash)
+		print('my hash: ' + hash_string)
+		if hash_string == sender_hash:
+			var packet = Packet.new(your_name(), name(), socket(), sender_address, jdata['type'], jdata)
+			#print('packet data for sending response: ' + str(packet_data))
+			return packet
+		else:
+			return null
 
 
 
