@@ -34,6 +34,12 @@ func _ready():
 	$HolePunch.connect('received_reliable_message_from_peer', self, '_message_from_peer')
 	$HolePunch.connect('error', self, '_error')
 	$HolePunch.connect('received_server_list', self, '_print_server_list')
+	
+	$HolePunch.connect('peer_confirmed_reliable_message_received', self, '_peer_confirmed_message')
+	$HolePunch.connect('reliable_message_timeout', self, '_reliable_message_timeout')
+	$HolePunch.connect('peer_check_timeout', self, '_peer_check_timeout')
+	$HolePunch.connect('peer_handshake_timeout', self, '_peer_handshake_timeout')
+
 	#defaults
 	_handshake_ip_field.text = '127.0.0.1'# '35.197.160.85'
 	_handshake_port_field.text = '5160'
@@ -42,6 +48,17 @@ func _ready():
 	_username_field.text = 'euler'
 
 
+func out(message):
+	"""prints a message to the gui console"""
+	_output_field.add_text(message)
+	_output_field.newline()
+
+
+
+
+######################################
+##           INPUTS
+######################################
 func _cut_handshake():
 	$HolePunch.drop_connection_with_handshake_server()
 	out("handshake cut: operating as full P2P")
@@ -52,6 +69,63 @@ func _request_server_list():
 	out("request for servers sent to " + handshake_ip)
 	$HolePunch.request_server_list([handshake_ip, handshake_port])
 
+
+func _send_message_to_peer():
+	$HolePunch.send_reliable_message_to_peer(_peer_username_field.text, {'position': 23})
+
+func _register_server():
+	var handshake_address = [_handshake_ip_field.text, int(_handshake_port_field.text)]
+	var local_address = [_local_ip_field.text, int(_local_port_field.text)]
+	var user_name = _username_field.text
+	var password = _password_field.text
+	if password == "":
+		password == null
+	$HolePunch.init_server(handshake_address, local_address, user_name, password)
+
+func _join_server():
+	var handshake_address = [_handshake_ip_field.text, int(_handshake_port_field.text)]
+	var local_address = [_local_ip_field.text, int(_local_port_field.text)]
+	var server_name = _server_field.text
+	var user_name = _username_field.text
+	var password = _password_field.text
+	if password == "":
+		password == null
+	$HolePunch.init_client(handshake_address, local_address, user_name, server_name, password) 
+
+
+func _print_peers():
+	out("connected peers:")
+	for peer in $HolePunch.get_peers():
+		out("    " + peer['name'] + " at " + str(peer['address']))
+
+
+
+######################################
+##           SIGNALS
+######################################
+
+func _message_from_peer(data):
+	out("message from " + data['sender'] + ":")
+	out("   " + str(data['message']))
+
+
+func _peer_confirmed_message(data):
+	out("peer confirmed message received: ")
+	out("   " + str(data['message']))
+
+func _reliable_message_timeout(data):
+	out("reliable message timeod out: " + str(data['message']))
+
+
+func _peer_check_timeout(peer_name):
+	out("peer check timeout for peer: " + peer_name)
+	out("dropping peer: " + peer_name)
+	$HolePunch.drop_peer(peer_name)
+	
+func _peer_handshake_timeout(peer_name):
+	out("failed to connect to " + peer_name)
+	
+	
 func _print_server_list(info):
 	out("received server list from " + info['server-address'][0])
 	out("servers: ")
@@ -74,46 +148,7 @@ func _new_peer(info):
 	out("New peer:")
 	out("    " + info['name'] + " at " + str(info['address']))
 
-func _packet_received(jData):
-	out("packet received of type: " + jData['type'])
+func _packet_received(data):
+	out("packet received of type: " + data['type'])
 	
-func _message_from_peer(jData):
-	out("message from " + jData['sender'])
-	out("   " + str(jData['message']))
 
-func _send_message_to_peer():
-	$HolePunch.send_reliable_message_to_peer(_peer_username_field.text, _peer_message_field.text)
-
-func _register_server():
-	var handshake_ip = _handshake_ip_field.text
-	var handshake_port = int(_handshake_port_field.text)
-	var local_ip = _local_ip_field.text
-	var local_port = int(_local_port_field.text)
-	var user_name = _username_field.text
-	var password = _password_field.text
-	if password == "":
-		password == null
-	$HolePunch.init_server(handshake_ip, handshake_port, local_ip, local_port, user_name, password)
-
-func _join_server():
-	var handshake_ip = _handshake_ip_field.text
-	var handshake_port = int(_handshake_port_field.text)
-	var local_ip = _local_ip_field.text
-	var local_port = int(_local_port_field.text)
-	var server_name = _server_field.text
-	var user_name = _username_field.text
-	var password = _password_field.text
-	if password == "":
-		password == null
-	$HolePunch.init_client(handshake_ip, handshake_port, local_ip, local_port, user_name, server_name, password) 
-
-
-func _print_peers():
-	out("connected peers:")
-	for peer in $HolePunch.get_peers():
-		out("    " + str(peer))
-
-func out(message):
-	"""prints a message to the gui console"""
-	_output_field.add_text(message)
-	_output_field.newline()
