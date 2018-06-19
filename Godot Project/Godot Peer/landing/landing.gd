@@ -39,7 +39,7 @@ func _ready():
 	holepunch.connect('reliable_message_timeout', self, '_reliable_message_timeout')
 	holepunch.connect('peer_check_timeout', self, '_peer_check_timeout')
 	holepunch.connect('peer_handshake_timeout', self, '_peer_handshake_timeout')
-
+	holepunch.connect('packet_sent', self, '_packet_sent')
 	#defaults
 	_handshake_ip_field.text = '127.0.0.1'# '35.197.160.85'
 	_handshake_port_field.text = '5160'
@@ -53,6 +53,8 @@ func out(message):
 	_output_field.add_text(message)
 	_output_field.newline()
 
+func _packet_sent(data):
+	out("packet sent of type: " + data['type'] +" to " + data['intended-recipient'])
 
 
 
@@ -120,8 +122,6 @@ func _reliable_message_timeout(data):
 
 func _peer_check_timeout(peer_name):
 	out("peer check timeout for peer: " + peer_name)
-	out("dropping peer: " + peer_name)
-	holepunch.drop_peer(peer_name)
 	
 func _peer_handshake_timeout(peer_name):
 	out("failed to connect to " + peer_name)

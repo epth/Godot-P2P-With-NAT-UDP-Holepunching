@@ -81,7 +81,7 @@ class ServerProtocol(DatagramProtocol):
                     'type': 'confirming-registration-refresh',
                 }
                 self.send(sender, jData['global-address'], data, self.serverHosts[sender]['password'])
-                print("registration refresed for " + jData['sender'])
+                print("registration refreshed for " + jData['sender'])
             else:
                 self.sendError(jData, "registration refresh failed: " + sender + " not found")
 
@@ -141,14 +141,16 @@ class ServerProtocol(DatagramProtocol):
 
     def sendError(self, data, message):
         """sends a packet of type server-error"""
-        if 'host-name' in data and 'global-address' in data:
+        if 'sender' in data and 'global-address' in data:
             hostName = data['sender']
-            errorPackagae = {
+            errorPackage = {
                     'type': 'server-error',
                     'message': message
             }
-            self.send(hostName, data['global-address'], errorPackagae)
-        print("sent error: " + message)
+            if 'password' in data:
+                errorPackage['password'] = data['password']
+            self.send(hostName, data['global-address'], errorPackage)
+            print("sent error: " + message)
 
 
 
