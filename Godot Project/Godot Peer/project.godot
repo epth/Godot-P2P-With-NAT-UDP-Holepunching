@@ -11,8 +11,13 @@ config_version=3
 [application]
 
 config/name="Peer"
-run/main_scene="res://peer_scene/Peer.tscn"
+run/main_scene="res://landing/Landing.tscn"
 config/icon="res://icon.png"
+
+[autoload]
+
+global="*res://global.gd"
+holepunch="*res://holepunch.gd"
 
 [display]
 

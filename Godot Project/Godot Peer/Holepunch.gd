@@ -202,7 +202,7 @@ func get_peers():
 	if _peers != null:
 		return _peers.get_confirmed()
 	else:
-		return null
+		return []
 
 func i_am_server():
 	return _i_am_server
