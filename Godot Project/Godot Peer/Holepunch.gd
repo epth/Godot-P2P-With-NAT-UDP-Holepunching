@@ -39,7 +39,7 @@ const _SERVER_NAME = "HANDSHAKE_SERVER"
 var _user_name = null
 var _i_am_server = null
 var _peers = null
-var _heartbeat_packets = HeartBeatPacketContainer.new()
+var _packets = PacketContainer.new()
 var _socket = PacketPeerUDP.new()
 var _local_address = null
 var _handshake_server = null
@@ -60,11 +60,11 @@ func _process(delta):
 	_seconds_ticker += delta
 	if _seconds_ticker > 1:
 		_seconds_ticker = 0
-		#copy because we remove packets from _heartbeat_packets within loop
-		for packet in _heartbeat_packets.get_packets_array_copy():
+		#copy because we remove packets from _packets within loop
+		for packet in _packets.get_packets_array_copy():
 			var packet_expired = packet.seconds_tick()
 			if packet_expired:
-				_heartbeat_packets.remove_all_of_peer_and_type(packet.dest_name, packet.type)
+				_packets.remove_all_of_peer_and_type(packet.dest_name, packet.type)
 				if packet.type == 'requesting-server-list':
 					emit_signal('error', 'failed to get list from server')
 					return
@@ -93,7 +93,11 @@ func _process(delta):
 					emit_signal('reliable_message_timeout', packet.get_copy_of_json_data())
 					return
 				else:
-					quit_connection()
+					#we don't care whether this packet made it
+					#includes: 
+						# reliable-peer-message-response
+						# peer-check-response
+					#because if they fail, the peer will resend their original request anyway
 					return
 
 	while _socket.get_available_packet_count() > 0:
@@ -109,7 +113,7 @@ func _process(delta):
 			break
 		
 		elif packet.type == 'providing-server-list':
-			_heartbeat_packets.remove_all_of_type('requesting-server-list')
+			_packets.remove_all_of_type('requesting-server-list')
 			var info = {
 				'server-list': packet_data['server-list'],
 				'server-address': packet.sender_address
@@ -117,27 +121,25 @@ func _process(delta):
 			emit_signal('received_server_list', info)
 		
 		elif packet.type == 'confirming-registration':
-			_heartbeat_packets.remove_all_of_type('registering-server')
+			_packets.remove_all_of_type('registering-server')
 			var data = {
 				'seconds-before-expiry': seconds_reg_valid
 			}
-			var send_immediately = false
-			var refresh = _handshake_server.make_heartbeat_packet('refreshing-server-registration',
-																  data, send_immediately, 
-																  seconds_between_reg_refresh)
-			_heartbeat_packets.add(refresh)
+			var send_now = false
+			_handshake_server.add_outgoing_packet('refreshing-server-registration', data,
+												  send_now, seconds_between_reg_refresh)
 		
 		elif packet.type == 'confirming-registration-refresh':
-			_heartbeat_packets.reset_expiry_for_all_of_type('refreshing-server-registration')
+			_packets.reset_expiry_for_all_of_type('refreshing-server-registration')
 		
 		elif packet.type == 'providing-peer-handshake-info':
 			#remove ignores if there are none matching
-			_heartbeat_packets.remove_all_of_type('requesting-to-join-server')
+			_packets.remove_all_of_type('requesting-to-join-server')
 			var peer_name = packet_data['peer-name']
 			#only add if we haven't already
 			if _peers.get(peer_name) == null:
 				var peer = Peer.new(self._user_name, peer_name, _password, 
-									self._socket, self._heartbeat_packets,
+									self._socket, self._packets,
 									packet_data['global-address'], packet_data['local-address'])
 				_peers.add(peer)
 				peer.send_address_inquiry()
@@ -146,27 +148,32 @@ func _process(delta):
 			#If this fails, they'll send again because it's in THEIR heartbeat
 			var peer_name = packet.sender_name
 			var address = packet.sender_address
-			_peers.get(peer_name).make_packet('address-inquiry-response', packet_data, address).send()
-		
+			var peer = _peers.get(peer_name)
+			if peer == null:
+				emit_signal('error', 'address inquiry from unknown peer')
+				return
+			var send_now = true
+			var repeat = null
+			var replace = false
+			peer.add_outgoing_packet('address-inquiry-response', packet_data, send_now, 
+									 repeat, address, replace)
+
 		elif packet.type == 'address-inquiry-response':
-			_heartbeat_packets.remove_all_of_peer_and_type(packet.sender_name, 'address-inquiry')
+			_packets.remove_all_of_peer_and_type(packet.sender_name, 'address-inquiry')
 			var peer = _peers.get(packet.sender_name)
 			if peer and not peer.is_confirmed():
 				peer.confirm(packet_data['used-global'])
 				emit_signal('peer_confirmed', peer.info())
-				var send_immediately = false
-				var peer_check = peer.make_heartbeat_packet('peer-check', {}, send_immediately, 
-														secs_between_peer_checks)
-				_heartbeat_packets.add(peer_check)
+				var send_now = false
+				peer.add_outgoing_packet('peer-check', {}, send_now, secs_between_peer_checks)
 		
 		elif packet.type == 'peer-check':
-			#If this fails, they'll send again because it's in THEIR heartbeat
 			var peer = _peers.get(packet.sender_name)
 			if peer and peer.is_confirmed():
-				peer.make_packet('peer-check-response', packet_data).send()
+				peer.add_outgoing_packet('peer-check-response', packet_data)
 		
 		elif packet.type == 'peer-check-response':
-			_heartbeat_packets.reset_expiry_for_all_of_peer_and_type(packet.sender_name, 'peer-check')
+			_packets.reset_expiry_for_all_of_peer_and_type(packet.sender_name, 'peer-check')
 		
 		elif packet.type == 'unreliable-peer-message':
 			emit_signal('received_unreliable_message_from_peer', packet.get_copy_of_json_data())
@@ -177,14 +184,13 @@ func _process(delta):
 				if not peer.msg_history_contains(packet_data['message-id']):
 					peer.add_id_to_msg_history(packet_data['message-id'])
 					emit_signal('received_reliable_message_from_peer', packet.get_copy_of_json_data())
-				#If this fails, they'll send again because it's in THEIR heartbeat
-				peer.make_packet('reliable-peer-message-response', packet_data).send()
+				peer.add_outgoing_packet('reliable-peer-message-response', packet_data)
 		
 		elif packet.type == 'reliable-peer-message-response':
 			var type = 'reliable-peer-message'
 			var key = 'message-id'
 			var value = packet_data['message-id']
-			_heartbeat_packets.remove_all_of_peer_and_type_with_key_value(packet.sender_name, type, 
+			_packets.remove_all_of_peer_and_type_with_key_value(packet.sender_name, type, 
 																		  key, value)
 			emit_signal('peer_confirmed_reliable_message_received', packet.get_copy_of_json_data())
 
@@ -224,11 +230,11 @@ func send_reliable_message_to_peer(peer_name, message):
 
 func request_server_list(handshake_address):
 	if not _handshake_server or _handshake_server.address() != handshake_address:
-		_heartbeat_packets.remove_all_of_peer(_SERVER_NAME)
+		_packets.remove_all_of_peer(_SERVER_NAME)
 		_handshake_server = Peer.new(_user_name, _SERVER_NAME, _generate_random_alpha_numeric(10),
-									  _socket, _heartbeat_packets, handshake_address)
+									  _socket, _packets, handshake_address)
 	var data = {'password': _handshake_server.password()}
-	_heartbeat_packets.add(_handshake_server.make_heartbeat_packet('requesting-server-list', data))
+	_handshake_server.add_outgoing_packet('requesting-server-list', data)
 
 func quit_connection():
 	_user_name = null
@@ -239,16 +245,16 @@ func quit_connection():
 	_password = null
 	_seconds_server_registration_valid = null
 	_secs_between_registration_refresh = null
-	_heartbeat_packets = HeartBeatPacketContainer.new()
+	_packets = PacketContainer.new()
 	_socket = PacketPeerUDP.new()
 	emit_signal('session_terminated')
 
 func drop_connection_with_handshake_server():
-	_heartbeat_packets.remove_all_of_peer(_SERVER_NAME)
+	_packets.remove_all_of_peer(_SERVER_NAME)
 	_handshake_server = null
 
 func drop_peer(peer_name):
-	_heartbeat_packets.remove_all_of_peer(peer_name)
+	_packets.remove_all_of_peer(peer_name)
 	var peer = _peers.get(peer_name)
 	_peers.remove(peer_name)
 	if peer:
@@ -269,8 +275,8 @@ func init_server(handshake_address, local_address, server_name, password=null):
 		'password': _handshake_server.password()
 	}
 	var send_immediately = true
-	var packet = _handshake_server.make_heartbeat_packet('registering-server', data, send_immediately)
-	_heartbeat_packets.add(packet)
+	_handshake_server.add_outgoing_packet('registering-server', data, send_immediately)
+
 	
 func init_client(handshake_address, local_address, user_name, server_name, password=null):
 	if not _common_init(user_name, handshake_address, local_address):
@@ -285,8 +291,7 @@ func init_client(handshake_address, local_address, user_name, server_name, passw
 		'password': _handshake_server.password()
 	}
 	var send_immediately = true
-	var packet = _handshake_server.make_heartbeat_packet('requesting-to-join-server', data, send_immediately)
-	_heartbeat_packets.add(packet)
+	_handshake_server.add_outgoing_packet('requesting-to-join-server', data, send_immediately)
 
 
 #############################################################
@@ -301,11 +306,11 @@ func _common_init(user_name, handshake_address, local_address):
 	_user_name = user_name
 	_local_address = [local_address[0], int(local_address[1])]
 	_socket = PacketPeerUDP.new()
-	_heartbeat_packets = HeartBeatPacketContainer.new()
+	_packets = PacketContainer.new()
 	_peers = PeerContainer.new()
 	handshake_address = [handshake_address[0], int(handshake_address[1])]
 	_handshake_server = Peer.new(user_name, _SERVER_NAME, _generate_random_alpha_numeric(10),
-									  _socket, _heartbeat_packets, handshake_address)
+									  _socket, _packets, handshake_address)
 	if _socket.listen(_local_address[1]) != OK:
 		emit_signal('error', 'invalid listener port')
 		quit_connection()
@@ -352,69 +357,66 @@ func _peer_sent_packet(packet):
 #############################################################
 #############################################################
 #                        PACKET CLASSES                     #
-#       use peers - NOT the Packet or HeartbeatPackets      #
+#       use peers - NOT the Packet                          #
 #############################################################
 
 
-class Packet:
-	"""
-	Stores enough information about a packet to provide a simple send() function.
-	You can only send outgoing packets
-	"""
+class HPacket:
 	var sender_name
 	var dest_name
 	var type
 	#one of these two will be null, depending on is_outgoing
 	var sender_address
 	var dest_address
+	var _outgoing
 	var _socket
 	var _data_as_json
-
-	func _init(sender_name, dest_name, _socket, address, is_outgoing, type, data_as_json):
-		self.sender_name = sender_name
-		self.dest_name = dest_name
-		self.type = type
-		if is_outgoing:
-			self.dest_address = address
-		else:
-			self.sender_address = address
-		self._socket = _socket
-		self._data_as_json = data_as_json
-	
-	func get_copy_of_json_data():
-		return _data_as_json.duplicate()
-	
-	func send():
-		if dest_address:
-			var bin_data = JSON.print(self._data_as_json).to_utf8()
-			self._socket.set_dest_address(dest_address[0], dest_address[1])
-			self._socket.put_packet(bin_data)
-		else:
-			print('attempted to send incoming packet.')
-
-class HeartbeatPacket extends Packet:
-	var _seconds_between_resends
-	var _resend_countdown
+	var _repeat_after_secs
+	var _repeat_countdown
 	var _await_reply_countdown
 	var _attempts_countdown
 	var _awaiting_reply = false
 	var _sent_once_already = false
 	
-	#goes to shit if if send_immediately=false and seconds_between_resends == null:
-	func _init(sender_name, dest_name, _socket, address, type, data_as_json, 
-				send_immediately=true, seconds_between_resends=null).(sender_name, dest_name, 
-																	  _socket, address, true, type, 
-																	  data_as_json):
-		self._resend_countdown = seconds_between_resends
-		self._seconds_between_resends = seconds_between_resends
+	#if send_immediately=false and repeat_after_secs == null the packet will stay 
+	#in memory, never sending
+	func _init(sender_name, dest_name, _socket, address, type, data_as_json, outgoing=true,
+				send_immediately=true, repeat_after_secs=null):
+		self.sender_name = sender_name
+		self.dest_name = dest_name
+		self.type = type
+		self._outgoing = outgoing
+		if outgoing:
+			self.dest_address = address
+		else:
+			self.sender_address = address
+		self._socket = _socket
+		self._data_as_json = data_as_json
+		self._repeat_countdown = repeat_after_secs
+		self._repeat_after_secs = repeat_after_secs
 		self._await_reply_countdown = seconds_to_await_reply
 		self._attempts_countdown = attempts_before_expiration
-		if send_immediately:
+		if self._outgoing and send_immediately:
 			send()
+			
+			
+	func get_copy_of_json_data():
+		return _data_as_json.duplicate()
+	
+	func send():
+		if self._outgoing:
+			var bin_data = JSON.print(self._data_as_json).to_utf8()
+			self._socket.set_dest_address(dest_address[0], dest_address[1])
+			self._socket.put_packet(bin_data)
 			self._awaiting_reply = true
 			self._sent_once_already = true
+		else:
+			print('attempted to send incoming packet.')
 			
 	func seconds_tick():
+		if _sent_once_already and _repeat_after_secs == null:
+			return true
+		
 		#Returns true if the packet has expired
 		if _awaiting_reply:
 			_await_reply_countdown -= 1
@@ -428,24 +430,22 @@ class HeartbeatPacket extends Packet:
 				else:
 					print("packet expired")
 					return true
-
-		elif _seconds_between_resends != null or not _sent_once_already:
-			_resend_countdown -= 1
-			if _resend_countdown <= 0:
+					
+		else:
+			_repeat_countdown -= 1
+			if _repeat_countdown <= 0:
 				print("sent type: " + type)
-				send()
 				reset_expiry()
-				_awaiting_reply = true
-				_sent_once_already = true
+				send()
 		return false
 
 	func reset_expiry():
 		_awaiting_reply = false
 		_attempts_countdown = attempts_before_expiration
 		_await_reply_countdown = seconds_to_await_reply
-		_resend_countdown = _seconds_between_resends
+		_repeat_countdown = _repeat_after_secs
 
-class HeartBeatPacketContainer:
+class PacketContainer:
 	var _packets = []
 	
 	func add(packet, replace_same_peer_and_type = true):
@@ -504,12 +504,6 @@ class HeartBeatPacketContainer:
 
 
 
-
-
-
-
-
-
 #############################################################
 #############################################################
 #                        PEER CLASSES                       #
@@ -526,14 +520,14 @@ class Peer:
 	var _use_global = 'undecided'
 	var _sent_message_id_counter = 0
 	var _socket = null
-	var _heartbeat_container = null
-	func _init(your_name, peer_name, password, socket, heartbeat_container, 
+	var _packets = null
+	func _init(your_name, peer_name, password, socket, packet_container, 
 				global_address, local_address=null):
 		self._your_name = your_name
 		self._peer_name = peer_name
 		self._password = password
 		self._socket = socket
-		self._heartbeat_container = heartbeat_container
+		self._packets = packet_container
 		self._global_address = [global_address[0], int(global_address[1])]
 		if local_address != null:
 			self._local_address = [local_address[0], int(local_address[1])]
@@ -574,35 +568,37 @@ class Peer:
 			return local_address()
 	
 	func send_address_inquiry():
-		var seconds_between_resends = null
-		var send_immediately = true
+		var repeat = null
+		var send_now = true
 		var g_data = {'used-global': true}
-		_heartbeat_container.add(make_heartbeat_packet('address-inquiry', g_data, 
-								 send_immediately, seconds_between_resends, global_address()))
+		add_outgoing_packet('address-inquiry', g_data, send_now, repeat, global_address())
 		var l_data = {'used-global': false}
-		_heartbeat_container.add(make_heartbeat_packet('address-inquiry', l_data, 
-								 send_immediately, seconds_between_resends, local_address()))
-		
+		var replace = false
+		add_outgoing_packet('address-inquiry', l_data, send_now, repeat, local_address(), replace)
+
 	func send_reliable_message(message):
-		"""true if message send attempted"""
 		if not is_confirmed():
 			return false
 		var data = {
 			'message': message,
 			'message-id': self._get_unique_msg_id()
 		}
-		var send_immediately = true
-		var packet = make_heartbeat_packet('reliable-peer-message', data, send_immediately) 
-		var replace_others_of_peer_and_type = false
-		_heartbeat_container.add(packet, replace_others_of_peer_and_type)
-		return true
+		var send_now = true
+		var repeat = null
+		var custom_address=null
+		var replace = false
+		add_outgoing_packet('reliable-peer-message', data, send_now, repeat, custom_address, replace)
+
 		
 	func send_unreliable_message(message):
-		"""true if message send attempted"""
 		if not is_confirmed():
 			return false
-		make_packet('unreliable-peer-message', {'message': message}).send()
-		return true
+		var data = {'message': message}
+		var send_now = true
+		var repeat = null
+		var custom_address=null
+		var replace = false
+		add_outgoing_packet('unreliable-peer-message', data, send_now, repeat, custom_address, replace)
 
 	func add_id_to_msg_history(msg_id):
 		_ids_of_received_messaged.push_back(msg_id)
@@ -616,21 +612,49 @@ class Peer:
 	func msg_history_contains(msg_id):
 		return _ids_of_received_messaged.has(msg_id)
 	
-	func make_packet(type, data, custom_address=null):
+	func add_outgoing_packet(type, data, send_now=true, repeat=null,
+							  custom_address=null, replace_same_peer_and_type=true):
 		data = _add_security_outgoing(type, data)
 		var address = custom_address
 		if address == null:
 			address = address()
-		return Packet.new(your_name(), name(), socket(), address, true, type, data)
+		var outgoing = true
+		var packet = HPacket.new(your_name(), name(), socket(), address, type, data, outgoing,
+								 send_now, repeat)
+		_packets.add(packet, replace_same_peer_and_type)
+		return packet
 		
-	func make_heartbeat_packet(type, data, send_immediately=true, seconds_between_resends=null, 
-							   custom_address=null):
-		data = _add_security_outgoing(type, data)
-		var address = custom_address
-		if address == null:
-			address = address()
-		return HeartbeatPacket.new(your_name(), name(), socket(), address, type, data, 
-									send_immediately, seconds_between_resends)
+		
+	func check_security_and_make_incoming_packet(jdata, sender_address):
+		#check everything is there
+		if is_confirmed() and sender_address != address():
+			return null
+		elif sender_address != local_address() and sender_address != global_address():
+			return null
+		if not jdata.has('type'):
+			return null
+		if not jdata.has('intended-recipient') or jdata['intended-recipient'] != your_name():
+			return null
+		if not jdata.has('hash-string'):
+			return null
+		
+		#check hashes match
+		var sender_hash = jdata['hash-string']
+		jdata.erase('hash-string')
+		var jdata_copy = jdata.duplicate()
+		jdata_copy['password'] = password()
+		var jstring = _get_sorted_joined_string_elements_from_array(jdata_copy.keys())
+		jstring += _get_sorted_joined_string_elements_from_array(jdata_copy.values())
+		var hash_string =jstring.sha256_text()
+		if hash_string != sender_hash:
+			return null
+		
+		#all good
+		var outgoing = false
+		return HPacket.new(name(), your_name(), socket(), sender_address, jdata['type'], 
+							jdata, outgoing)
+
+
 	
 	func _get_unique_msg_id():
 		var id = _sent_message_id_counter
@@ -663,34 +687,6 @@ class Peer:
 		data['hash-string'] = hash_string
 		return data
 		
-	func check_security_and_make_incoming_packet(jdata, sender_address):
-		#check everything is there
-		if is_confirmed() and sender_address != address():
-			return null
-		elif sender_address != local_address() and sender_address != global_address():
-			return null
-		if not jdata.has('type'):
-			return null
-		if not jdata.has('intended-recipient') or jdata['intended-recipient'] != your_name():
-			return null
-		if not jdata.has('hash-string'):
-			return null
-		
-		#check hashes match
-		var sender_hash = jdata['hash-string']
-		jdata.erase('hash-string')
-		var jdata_copy = jdata.duplicate()
-		jdata_copy['password'] = password()
-		var jstring = _get_sorted_joined_string_elements_from_array(jdata_copy.keys())
-		jstring += _get_sorted_joined_string_elements_from_array(jdata_copy.values())
-		var hash_string =jstring.sha256_text()
-		if hash_string != sender_hash:
-			return null
-		
-		#all good
-		var is_outgoing = false
-		return Packet.new(name(), your_name(), socket(), sender_address, is_outgoing, jdata['type'], jdata)
-
 
 
 
