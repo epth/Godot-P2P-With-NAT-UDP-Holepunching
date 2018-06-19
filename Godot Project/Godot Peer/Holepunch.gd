@@ -74,6 +74,9 @@ func _process(delta):
 				if packet.type == 'registering-server':
 					quit_connection()
 					return
+				if packet.type == 'refreshing-server-registration':
+					quit_connection()
+					return
 				if packet.type == 'requesting-to-join-server':
 					quit_connection()
 					return
