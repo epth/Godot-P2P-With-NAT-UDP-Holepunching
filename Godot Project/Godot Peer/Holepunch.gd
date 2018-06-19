@@ -16,6 +16,7 @@ signal peer_dropped
 signal session_terminated 
 signal packet_sent
 signal packet_received
+signal packet_blocked
 signal peer_confirmed
 signal received_unreliable_message_from_peer
 signal received_reliable_message_from_peer 
@@ -105,6 +106,10 @@ func _process(delta):
 	while _socket.get_available_packet_count() > 0:
 		var packet = _get_incoming_packet()
 		if packet == null:
+			#note: you'll get a block on the second address inquiry response received
+			#because the peer will have confirmed as the first address- so there's
+			#an address mismatch. 
+			emit_signal('packet_blocked', [_socket.get_packet_ip(), _socket.get_packet_port()])
 			return
 		var packet_data =  packet.get_copy_of_json_data()
 		emit_signal('packet_received', packet.get_copy_of_json_data())

@@ -30,6 +30,7 @@ func _ready():
 	holepunch.connect('peer_dropped', self, '_peer_dropped')
 	holepunch.connect('peer_confirmed', self, '_new_peer')
 	holepunch.connect('packet_received', self, '_packet_received')
+	holepunch.connect('packet_blocked', self, '_packet_blocked')
 	holepunch.connect('received_unreliable_message_from_peer', self, '_message_from_peer')
 	holepunch.connect('received_reliable_message_from_peer', self, '_message_from_peer')
 	holepunch.connect('error', self, '_error')
@@ -56,7 +57,8 @@ func out(message):
 func _packet_sent(data):
 	out("packet sent of type: " + data['type'] +" to " + data['intended-recipient'])
 
-
+func _packet_blocked(address):
+	out("packet blocked from: " + str(address))
 
 ######################################
 ##           INPUTS
