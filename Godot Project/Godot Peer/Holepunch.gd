@@ -127,9 +127,8 @@ func _process(delta):
 			var data = {
 				'seconds-before-expiry': seconds_reg_valid
 			}
-			var send_now = false
-			_handshake_server.add_outgoing_packet('refreshing-server-registration', data,
-												  send_now, seconds_between_reg_refresh)
+			_handshake_server.add_outgoing_reliable_periodic('refreshing-server-registration', 
+													data, seconds_between_reg_refresh)
 		
 		elif packet.type == 'confirming-registration-refresh':
 			_packets.reset_expiry_for_all_of_type('refreshing-server-registration')
@@ -153,13 +152,7 @@ func _process(delta):
 			if peer == null:
 				emit_signal('error', 'address inquiry from unknown peer')
 				return
-			var send_now = true
-			var repeat = null
-			var replace = false
-			#If this fails, they'll send again because THEY care about it
-			var resend_on_fail = false
-			peer.add_outgoing_packet('address-inquiry-response', packet_data, send_now, 
-									 repeat, resend_on_fail, address, replace)
+			peer.add_outgoing_unreliable_now('address-inquiry-response', packet_data, address)
 
 		elif packet.type == 'address-inquiry-response':
 			_packets.remove_all_of_peer_and_type(packet.sender_name, 'address-inquiry')
@@ -167,18 +160,13 @@ func _process(delta):
 			if peer and not peer.is_confirmed():
 				peer.confirm(packet_data['used-global'])
 				emit_signal('peer_confirmed', peer.info())
-				var send_now = false
-				peer.add_outgoing_packet('peer-check', {}, send_now, secs_between_peer_checks)
+				peer.add_outgoing_reliable_periodic('peer-check', {}, secs_between_peer_checks)
 		
 		elif packet.type == 'peer-check':
 			var peer = _peers.get(packet.sender_name)
 			if peer and peer.is_confirmed():
 				#If this fails, they'll send again because THEY care about it
-				var resend_on_fail = false
-				var send_now = true
-				var repeat = null
-				peer.add_outgoing_packet('peer-check-response', packet_data, send_now, 
-										 repeat, resend_on_fail)
+				peer.add_outgoing_unreliable_now('peer-check-response', packet_data)
 		
 		elif packet.type == 'peer-check-response':
 			_packets.reset_expiry_for_all_of_peer_and_type(packet.sender_name, 'peer-check')
@@ -192,18 +180,15 @@ func _process(delta):
 				if not peer.msg_history_contains(packet_data['message-id']):
 					peer.add_id_to_msg_history(packet_data['message-id'])
 					emit_signal('received_reliable_message_from_peer', packet.get_copy_of_json_data())
-				var resend_on_fail = false
-				var send_now = true
-				var repeat = null
-				peer.add_outgoing_packet('reliable-peer-message-response', packet_data, send_now, 
-										 repeat, resend_on_fail)
+				peer.add_outgoing_unreliable_now('reliable-peer-message-response', packet_data)
+
 		
 		elif packet.type == 'reliable-peer-message-response':
 			var type = 'reliable-peer-message'
 			var key = 'message-id'
 			var value = packet_data['message-id']
 			_packets.remove_all_of_peer_and_type_with_key_value(packet.sender_name, type, 
-																		  key, value)
+																 key, value)
 			emit_signal('peer_confirmed_reliable_message_received', packet.get_copy_of_json_data())
 
 
@@ -252,7 +237,7 @@ func request_server_list(handshake_address):
 		_handshake_server = Peer.new(self, _SERVER_NAME, _generate_random_alpha_numeric(10),
 									  _socket, _packets, handshake_address)
 	var data = {'password': _handshake_server.password()}
-	_handshake_server.add_outgoing_packet('requesting-server-list', data)
+	_handshake_server.add_outgoing_reliable_now('requesting-server-list', data)
 
 func quit_connection():
 	_user_name = null
@@ -292,8 +277,8 @@ func init_server(handshake_address, local_address, server_name, password=null):
 		'seconds-before-expiry': self.seconds_reg_valid,
 		'password': _handshake_server.password()
 	}
-	var send_immediately = true
-	_handshake_server.add_outgoing_packet('registering-server', data, send_immediately)
+	_handshake_server.add_outgoing_reliable_now('registering-server', data)
+
 
 	
 func init_client(handshake_address, local_address, user_name, server_name, password=null):
@@ -308,8 +293,8 @@ func init_client(handshake_address, local_address, user_name, server_name, passw
 		'server-name': server_name,
 		'password': _handshake_server.password()
 	}
-	var send_immediately = true
-	_handshake_server.add_outgoing_packet('requesting-to-join-server', data, send_immediately)
+	_handshake_server.add_outgoing_reliable_now('requesting-to-join-server', data)
+
 
 
 #############################################################
@@ -438,11 +423,14 @@ class HPacket:
 			print('attempted to send incoming packet.')
 			
 	func seconds_tick():
+				
 		#Returns true if the packet has expired
 		if _awaiting_reply:
 			_await_reply_countdown -= 1
 			if _await_reply_countdown <= 0:
-				print("attempt failed")
+				print("no reply for: " + type)
+				#we still wait because although we don't want to send on fail, 
+				#we might still like to wait for reply in case one does come back
 				if not _resend_on_fail:
 					return true
 				_attempts_countdown -= 1
@@ -601,6 +589,8 @@ class Peer:
 		add_outgoing_packet('address-inquiry', l_data, send_now, repeat, resend_on_fail,
 							local_address(), replace)
 
+	
+
 	func send_reliable_message(message):
 		if not is_confirmed():
 			return false
@@ -608,26 +598,14 @@ class Peer:
 			'message': message,
 			'message-id': self._get_unique_msg_id()
 		}
-		var send_now = true
-		var repeat = null
-		var custom_address=null
-		var replace = false
-		var resend_on_fail = true
-		add_outgoing_packet('reliable-peer-message', data, send_now, repeat, 
-							resend_on_fail, custom_address, replace)
-
+		add_outgoing_reliable_now('reliable-peer-message', data, null)
 
 	func send_unreliable_message(message):
 		if not is_confirmed():
 			return false
 		var data = {'message': message}
-		var send_now = true
-		var repeat = null
-		var custom_address=null
-		var replace = false
-		var resend_on_fail = false
-		add_outgoing_packet('unreliable-peer-message', data, send_now, repeat, 
-							resend_on_fail, custom_address, replace)
+		add_outgoing_unreliable_now('unreliable-peer-message', data)
+
 
 	func add_id_to_msg_history(msg_id):
 		_ids_of_received_messaged.push_back(msg_id)
@@ -641,8 +619,17 @@ class Peer:
 	func msg_history_contains(msg_id):
 		return _ids_of_received_messaged.has(msg_id)
 	
+	func add_outgoing_reliable_now(type, data, custom_address=null):
+		add_outgoing_packet(type, data, true, null, true, custom_address)
+		
+	func add_outgoing_unreliable_now(type, data, custom_address=null):
+		add_outgoing_packet(type, data, true, null, false, custom_address)
+		
+	func add_outgoing_reliable_periodic(type, data, period, custom_address=null):
+		add_outgoing_packet(type, data, false, period, true, custom_address)
+	
 	func add_outgoing_packet(type, data, send_now=true, repeat=null, resend_on_fail=true,
-							  custom_address=null, replace_same_peer_and_type=true):
+							  custom_address=null, replace_same_peer_and_type=false):
 		data = _add_security_outgoing(type, data)
 		var address = custom_address
 		if address == null:
@@ -651,7 +638,6 @@ class Peer:
 		var packet = HPacket.new(_holepunch_ref, your_name(), name(), socket(), address, type, 
 								data, outgoing, resend_on_fail, send_now, repeat)
 		_packets.add(packet, replace_same_peer_and_type)
-		return packet
 		
 		
 	func check_security_and_make_incoming_packet(jdata, sender_address):
