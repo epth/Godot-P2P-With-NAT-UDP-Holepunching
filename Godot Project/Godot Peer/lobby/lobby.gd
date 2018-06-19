@@ -5,6 +5,7 @@ extends VBoxContainer
 # var b = "textvar"
 
 func _ready():
+	out("playing as: " + holepunch.get_user_name())
 	holepunch.connect('packet_received', self, '_packet_received')
 
 func out(message):
@@ -14,4 +15,4 @@ func out(message):
 
 
 func _packet_received(packet):
-	out("packet received in lobby: " + packet['type'])
+	out("packet received in lobby: " + packet['type'] + " from " + packet['sender'])

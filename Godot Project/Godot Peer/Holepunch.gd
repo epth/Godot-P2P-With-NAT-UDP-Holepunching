@@ -35,7 +35,7 @@ const seconds_between_reg_refresh = 15
 const seconds_to_await_reply = 1
 const attempts_before_expiration = 5
 
-const _SERVER_NAME = ""
+const _SERVER_NAME = "HANDSHAKE_SERVER"
 var _user_name = null
 var _i_am_server = null
 var _peers = null
@@ -295,8 +295,8 @@ func init_client(handshake_address, local_address, user_name, server_name, passw
 #############################################################
 
 func _common_init(user_name, handshake_address, local_address):
-	if user_name == _SERVER_NAME:
-		emit_signal('error', 'invalid user name: ' + user_name)
+	if user_name == _SERVER_NAME or user_name == "":
+		emit_signal('error', 'invalid user name: "' + user_name + '"')
 		return false
 	_user_name = user_name
 	_local_address = [local_address[0], int(local_address[1])]
@@ -344,7 +344,9 @@ func _get_incoming_packet():
 	return peer.check_security_and_make_incoming_packet(jdata, sender_address)
 
 
-
+func _peer_sent_packet(packet):
+	"""change to approproate signal later- just tetsing for now"""
+	emit_signal('error', packet.type)
 
 
 #############################################################
