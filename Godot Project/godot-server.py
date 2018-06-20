@@ -15,6 +15,7 @@ class ServerProtocol(DatagramProtocol):
     def __init__(self):
         """Initialize with empy server list."""
         self.serverHosts = {}
+        print("Handshake server started.\nListening on port " + str(SERVER_PORT))
 
     def datagramReceived(self, datagram, address):
         """

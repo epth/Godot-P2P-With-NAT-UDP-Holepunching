@@ -1,9 +1,8 @@
 extends Node
 
 """
-todo: add X-scene support (eg a function that takes a bool (am i server) and confirmed peers
-		and continues heartbeating and signallin etc.)
-	:documentation
+todo
+	* documentation
 """
 
 
@@ -37,7 +36,7 @@ const seconds_reg_valid = 60
 const seconds_between_reg_refresh = 15
 const seconds_to_await_reply = 1
 const attempts_before_expiration = 5
-
+#peers can't have same name as handshake server
 const _SERVER_NAME = "HANDSHAKE_SERVER"
 var _user_name = null
 var _i_am_server = null
