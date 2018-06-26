@@ -50,8 +50,6 @@ func _ready():
 	_local_ip_field.text = '192.168.1.127'
 	_local_port_field.text = '3334'
 	_username_field.text = 'euler'
-	
-	netcode.connect('high_level_msg_received', self, '_high_level_msg_received')
 
 
 func out(message):
@@ -71,12 +69,6 @@ func _packet_blocked(address):
 func _cut_handshake():
 	holepunch.drop_connection_with_handshake_server()
 	out("handshake cut: operating as full P2P")
-	var info = holepunch.quit_connection()
-	if info["i_am_server"]:
-		netcode.create_server(info["server_address"], {"name": info["user_name"]})
-	else:
-		netcode.join_server(info["my_address"], info["server_address"], {"name": info["user_name"]})
-	out("successfully joined to higher networking system")
 	#global.goto_scene(global.lobby_scene)
 	
 func _request_server_list():
@@ -87,10 +79,8 @@ func _request_server_list():
 
 
 func _send_message_to_peer():
-	if holepunch.is_connected():
-		holepunch.send_reliable_message_to_peer(_peer_username_field.text, _peer_message_field.text)
-	else:
-		netcode.send_message(_peer_username_field.text, _peer_message_field.text)
+	holepunch.send_reliable_message_to_peer(_peer_username_field.text, _peer_message_field.text)
+
 
 func _register_server():
 	var handshake_address = [_handshake_ip_field.text, int(_handshake_port_field.text)]
@@ -100,7 +90,6 @@ func _register_server():
 	if password == "":
 		password == null
 	holepunch.init_server(handshake_address, local_address, user_name, password)
-	#netcode.create_server({"name": holepunch.get_user_name()})
 
 func _join_server():
 	var handshake_address = [_handshake_ip_field.text, int(_handshake_port_field.text)]
@@ -115,12 +104,8 @@ func _join_server():
 
 func _print_peers():
 	out("connected peers:")
-	if holepunch.is_connected():
-		for peer in holepunch.get_peers():
-			out("    " + peer['name'] + " at " + str(peer['address']))
-	else:
-		for peer in global.player_infos.keys():
-			out("    " + peer)
+	for peer in holepunch.get_peers():
+		out("    " + peer['name'] + " at " + str(peer['address']))
 
 
 
@@ -128,9 +113,6 @@ func _print_peers():
 ##           SIGNALS
 ######################################
 
-func _high_level_msg_received(message):
-	out("high level message received:")
-	out ("    " + str(message))
 
 func _confirmed_as_server(server_address):
 	out("confirmed as server")
