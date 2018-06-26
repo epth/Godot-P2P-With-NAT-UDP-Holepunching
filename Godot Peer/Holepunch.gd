@@ -2,6 +2,7 @@ extends Node
 
 """
 todo
+	* try to hook into godot high-level networking
 	* documentation
 """
 
