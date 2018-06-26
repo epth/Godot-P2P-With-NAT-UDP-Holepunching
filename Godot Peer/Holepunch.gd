@@ -11,13 +11,15 @@ todo
 #############################################################
 #                           SIGNALS                         #
 #############################################################
+signal confirmed_as_client
+signal confirmed_as_server
 
 signal peer_dropped
 signal session_terminated 
 signal packet_sent
 signal packet_received
 signal packet_blocked
-signal peer_confirmed
+signal client_confirmed
 signal received_unreliable_message_from_peer
 signal received_reliable_message_from_peer 
 signal peer_confirmed_reliable_message_received
@@ -26,6 +28,7 @@ signal peer_check_timeout
 signal peer_handshake_timeout
 signal error
 signal received_server_list
+
 
 
 #############################################################
@@ -45,10 +48,9 @@ var _peers = null
 var _packets = PacketContainer.new()
 var _socket = PacketPeerUDP.new()
 var _local_address = null
+var _server_address = null
 var _handshake_server = null
 var _password = null
-var _seconds_server_registration_valid
-var _secs_between_registration_refresh
 var _seconds_ticker = 0
 
 
@@ -128,6 +130,7 @@ func _process(delta):
 				'server-list': packet_data['server-list'],
 				'server-address': packet.sender_address
 			}
+			
 			emit_signal('received_server_list', info)
 		
 		elif packet.type == 'confirming-registration':
@@ -137,6 +140,9 @@ func _process(delta):
 			}
 			_handshake_server.add_outgoing_reliable_periodic('refreshing-server-registration', 
 													data, seconds_between_reg_refresh)
+			print("global address: " + str(packet.dest_address))
+			_server_address =  packet.dest_address
+			emit_signal('confirmed_as_server', get_server_address())
 		
 		elif packet.type == 'confirming-registration-refresh':
 			_packets.reset_expiry_for_all_of_type('refreshing-server-registration')
@@ -167,8 +173,13 @@ func _process(delta):
 			var peer = _peers.get(packet.sender_name)
 			if peer and not peer.is_confirmed():
 				peer.confirm(packet_data['used-global'])
-				emit_signal('peer_confirmed', peer.info())
+				
 				peer.add_outgoing_reliable_periodic('peer-check', {}, secs_between_peer_checks)
+				if _i_am_server:
+					emit_signal('client_confirmed', peer.info())
+				else:
+					_server_address =  peer.address()
+					emit_signal('confirmed_as_client', get_server_address())
 		
 		elif packet.type == 'peer-check':
 			var peer = _peers.get(packet.sender_name)
@@ -218,6 +229,12 @@ func get_peers():
 func i_am_server():
 	return _i_am_server
 
+func get_server_address():
+	if _server_address != null:
+		return _server_address.duplicate()
+	else:
+		return null
+
 func send_unreliable_message_to_peer(peer_name, message):
 	if _peers == null:
 		emit_signal('error', 'uninitialised client')
@@ -248,21 +265,28 @@ func request_server_list(handshake_address):
 	_handshake_server.add_outgoing_reliable_now('requesting-server-list', data)
 
 func quit_connection():
+	var ret_info = {
+		"i_am_server" : i_am_server(),
+		"server_address": get_server_address(),
+		"user_name" : get_user_name()
+	}
 	_user_name = null
 	_peers = null
 	_i_am_server = null
 	_handshake_server = null
 	_local_address = null
 	_password = null
-	_seconds_server_registration_valid = null
-	_secs_between_registration_refresh = null
 	_packets = PacketContainer.new()
 	_socket = PacketPeerUDP.new()
 	emit_signal('session_terminated')
+	return ret_info
 
 func drop_connection_with_handshake_server():
 	_packets.remove_all_of_peer(_SERVER_NAME)
 	_handshake_server = null
+
+func is_connected():
+	return _user_name != null
 
 func drop_peer(peer_name):
 	_packets.remove_all_of_peer(peer_name)
@@ -330,14 +354,13 @@ func _common_init(user_name, handshake_address, local_address):
 
 
 func _generate_random_alpha_numeric(length):
-	#only uses hex digits as characters for now
+	var allowed_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	randomize()
-	var seeder_string = str(randf())
-	var random_string = seeder_string.sha256_text()
-	while random_string.length() < length:
-		seeder_string = str(randf())
-		random_string += seeder_string.sha256_text()
-	return random_string.substr(0, length)
+	var random_string = ""
+	for i in range(0, length):
+		random_string += allowed_chars[randi() % allowed_chars.length()]
+	print(random_string)
+	return random_string
 
 
 func _get_incoming_packet():
@@ -351,8 +374,8 @@ func _get_incoming_packet():
 	
 	var jdata = result.result
 	var peer 
-	if jdata.has('sender') and _peers.get(jdata['sender']):
-		peer = _peers.get(jdata['sender'])
+	if jdata.has('__sender-name') and _peers.get(jdata['__sender-name']):
+		peer = _peers.get(jdata['__sender-name'])
 	elif _handshake_server:
 		peer = _handshake_server
 	if not peer:
@@ -377,7 +400,7 @@ class HPacket:
 	var sender_name
 	var dest_name
 	var type
-	#one of these two will be null, depending on is_outgoing
+	#for outgoing, this will be null
 	var sender_address
 	var dest_address
 	var _holepunch_ref 
@@ -394,18 +417,17 @@ class HPacket:
 	
 	#if send_immediately=false and repeat_after_secs == null the packet will stay 
 	#in memory, never sending
-	func _init(holepunch_ref, sender_name, dest_name, _socket, address, type, data_as_json, 
-				outgoing=true,resend_on_fail=true, send_immediately=true, repeat_after_secs=null):
+	func _init(holepunch_ref, sender_name, dest_name, _socket, sender_address, dest_address, 
+				type, data_as_json, outgoing=true,resend_on_fail=true, send_immediately=true, 
+				repeat_after_secs=null):
 		self._holepunch_ref = holepunch_ref
 		self._resend_on_fail = resend_on_fail
 		self.sender_name = sender_name
 		self.dest_name = dest_name
 		self.type = type
 		self._outgoing = outgoing
-		if outgoing:
-			self.dest_address = address
-		else:
-			self.sender_address = address
+		self.sender_address = sender_address
+		self.dest_address = dest_address
 		self._socket = _socket
 		self._data_as_json = data_as_json
 		self._repeat_countdown = repeat_after_secs
@@ -638,12 +660,12 @@ class Peer:
 	
 	func add_outgoing_packet(type, data, send_now=true, repeat=null, resend_on_fail=true,
 							  custom_address=null, replace_same_peer_and_type=false):
-		data = _add_security_outgoing(type, data)
 		var address = custom_address
 		if address == null:
 			address = address()
 		var outgoing = true
-		var packet = HPacket.new(_holepunch_ref, your_name(), name(), socket(), address, type, 
+		data = _add_security_outgoing(type, data, address)
+		var packet = HPacket.new(_holepunch_ref, your_name(), name(), socket(), null, address, type, 
 								data, outgoing, resend_on_fail, send_now, repeat)
 		_packets.add(packet, replace_same_peer_and_type)
 		
@@ -654,16 +676,18 @@ class Peer:
 			return null
 		elif sender_address != local_address() and sender_address != global_address():
 			return null
-		if not jdata.has('type'):
+		if not jdata.has('__type'):
 			return null
-		if not jdata.has('intended-recipient') or jdata['intended-recipient'] != your_name():
+		if not jdata.has('__destination-address'):
 			return null
-		if not jdata.has('hash-string'):
+		if not jdata.has('__destination-name') or jdata['__destination-name'] != your_name():
+			return null
+		if not jdata.has('__hash-string'):
 			return null
 		
 		#check hashes match
-		var sender_hash = jdata['hash-string']
-		jdata.erase('hash-string')
+		var sender_hash = jdata['__hash-string']
+		jdata.erase('__hash-string')
 		var jdata_copy = jdata.duplicate()
 		jdata_copy['password'] = password()
 		var jstring = _get_sorted_joined_string_elements_from_array(jdata_copy.keys())
@@ -674,8 +698,8 @@ class Peer:
 		
 		#all good
 		var outgoing = false
-		return HPacket.new(_holepunch_ref, name(), your_name(), socket(), sender_address, jdata['type'], 
-							jdata, outgoing)
+		return HPacket.new(_holepunch_ref, name(), your_name(), socket(), sender_address, 
+							jdata['__destination-address'], jdata['__type'], jdata, outgoing)
 
 
 	
@@ -698,16 +722,17 @@ class Peer:
 				string_of_sorted_strings += string_element
 		return string_of_sorted_strings
 		
-	func _add_security_outgoing(type, data):
-		data['type'] = type
-		data['sender'] = your_name()
-		data['intended-recipient'] = name()
+	func _add_security_outgoing(type, data, address):
+		data['__type'] = type
+		data['__sender-name'] = your_name()
+		data['__destination-name'] = name()
+		data['__destination-address'] = address
 		var copy_for_hashing = data.duplicate()
 		copy_for_hashing['password'] = password()
 		var jstring = _get_sorted_joined_string_elements_from_array(copy_for_hashing.keys())
 		jstring += _get_sorted_joined_string_elements_from_array(copy_for_hashing.values())
 		var hash_string =jstring.sha256_text()
-		data['hash-string'] = hash_string
+		data['__hash-string'] = hash_string
 		return data
 		
 

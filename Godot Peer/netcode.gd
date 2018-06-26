@@ -1,11 +1,13 @@
 extends Node
 
-#const PORT = 33334
+
 const SERVER_ID = 1
 const MAX_PLAYERS = 4
 const COMPRESSION_MODE = NetworkedMultiplayerENet.COMPRESS_ZLIB
 var me_as_peer = null #will hold the NetworkedMultiplayerENet
 var my_info = {}
+
+signal high_level_msg_received
 
 func _ready():
 	get_tree().connect('network_peer_disconnected', self, '_player_disconnected')
@@ -20,8 +22,9 @@ func _ready():
 ###########################################
 
 func create_server(address, player_info):
+	player_info.id = SERVER_ID
 	global.player_infos = {}
-	global.player_infos[SERVER_ID] = player_info
+	global.player_infos[player_info.name] = player_info
 	my_info = player_info
 	me_as_peer = NetworkedMultiplayerENet.new()
 	me_as_peer.set_compression_mode(COMPRESSION_MODE)
@@ -30,24 +33,24 @@ func create_server(address, player_info):
 	return true
 
 func join_server(server_address, player_info):
-	my_info = player_info
 	me_as_peer = NetworkedMultiplayerENet.new()
 	me_as_peer.set_compression_mode(COMPRESSION_MODE)
 	me_as_peer.create_client(server_address[0], server_address[1])
 	get_tree().set_network_peer(me_as_peer)
+	player_info.id = get_tree().get_network_unique_id()
+	my_info = player_info
 	return true
 
 func _connected_ok():
-	var my_id = get_tree().get_network_unique_id()
-	rpc("_register_player", my_id, my_info)
+	rpc("_register_player", my_info)
 
-remote func _register_player(id, player_info):
-	global.player_infos[id] = player_info
+remote func _register_player(player_info):
+	global.player_infos[player_info.name] = player_info
 	if get_tree().is_network_server():
 		#fill in the new guy about other players
-		for peer_id in global.player_infos:
-			rpc_id(id, "_register_player", peer_id, global.player_infos[peer_id])
-	global.lobby_update_pending = true
+		for other_info in global.player_infos.values():
+			rpc_id(player_info.id, "_register_player", other_info)
+	#global.lobby_update_pending = true
 
 
 
@@ -57,23 +60,33 @@ remote func _register_player(id, player_info):
 ###########################################
 
 
-func propagate_player_info():
-	var my_id = get_tree().get_network_unique_id()
-	rpc("_update_player_info", my_id, global.player_infos[my_id])
+#func propagate_player_info():
+#	var my_id = get_tree().get_network_unique_id()
+#	rpc("_update_player_info", my_id, global.player_infos[my_id])
+#
+#remote func _update_player_info(id, player_info):
+#	global.player_infos[id] = player_info
+#	global.lobby_update_pending = true
+#
+#func propagate_settings():
+#	rpc("_update_settings", global.settings)
+#
+#remote func _update_settings(settings):
+#	#global.settings = settings
+#	#global.lobby_update_pending = true
+#	pass
 
-remote func _update_player_info(id, player_info):
-	global.player_infos[id] = player_info
-	global.lobby_update_pending = true
 
-func propagate_settings():
-	rpc("_update_settings", global.settings)
-	
-remote func _update_settings(settings):
-	global.settings = settings
-	global.lobby_update_pending = true
+###########################################
+###########################################
+#####          MESSAGES               #####
+###########################################
+remote func receive_message(message):
+	emit_signal('high_level_msg_received', message)
 
-
-
+func send_message(peer_name, message):
+	print("sending message")
+	rpc_id(global.player_infos[peer_name].id, "receive_message", message)
 
 
 ###########################################

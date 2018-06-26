@@ -26,9 +26,12 @@ func _ready():
 	_get_server_list_button.connect('pressed', self, '_request_server_list')
 	_cut_handshake_button.connect('pressed', self, '_cut_handshake')
 	#connect P2P signals
+	holepunch.connect('confirmed_as_server', self, '_confirmed_as_server')
+	holepunch.connect('confirmed_as_client', self, '_confirmed_as_client')
+	
 	holepunch.connect('session_terminated', self, '_give_up')
 	holepunch.connect('peer_dropped', self, '_peer_dropped')
-	holepunch.connect('peer_confirmed', self, '_new_peer')
+	holepunch.connect('client_confirmed', self, '_new_peer')
 	holepunch.connect('packet_received', self, '_packet_received')
 	holepunch.connect('packet_blocked', self, '_packet_blocked')
 	holepunch.connect('received_unreliable_message_from_peer', self, '_message_from_peer')
@@ -42,11 +45,13 @@ func _ready():
 	holepunch.connect('peer_handshake_timeout', self, '_peer_handshake_timeout')
 	holepunch.connect('packet_sent', self, '_packet_sent')
 	#defaults
-	_handshake_ip_field.text = '127.0.0.1'# '35.197.160.85'
+	_handshake_ip_field.text = '35.197.160.85'# '127.0.0.1'# '35.197.160.85'
 	_handshake_port_field.text = '5160'
 	_local_ip_field.text = '192.168.1.127'
 	_local_port_field.text = '3334'
 	_username_field.text = 'euler'
+	
+	netcode.connect('high_level_msg_received', self, '_high_level_msg_received')
 
 
 func out(message):
@@ -55,7 +60,7 @@ func out(message):
 	_output_field.newline()
 
 func _packet_sent(data):
-	out("packet sent of type: " + data['type'] +" to " + data['intended-recipient'])
+	out("packet sent of type: " + data['__type'] +" to " + data['__destination-name'])
 
 func _packet_blocked(address):
 	out("packet blocked from: " + str(address))
@@ -66,7 +71,13 @@ func _packet_blocked(address):
 func _cut_handshake():
 	holepunch.drop_connection_with_handshake_server()
 	out("handshake cut: operating as full P2P")
-	global.goto_scene(global.lobby_scene)
+	var info = holepunch.quit_connection()
+	if info["i_am_server"]:
+		netcode.create_server(info["server_address"], {"name": info["user_name"]})
+	else:
+		netcode.join_server(info["server_address"], {"name": info["user_name"]})
+	out("successfully joined to higher networking system")
+	#global.goto_scene(global.lobby_scene)
 	
 func _request_server_list():
 	var handshake_ip = _handshake_ip_field.text
@@ -76,7 +87,10 @@ func _request_server_list():
 
 
 func _send_message_to_peer():
-	holepunch.send_reliable_message_to_peer(_peer_username_field.text, _peer_message_field.text)
+	if holepunch.is_connected():
+		holepunch.send_reliable_message_to_peer(_peer_username_field.text, _peer_message_field.text)
+	else:
+		netcode.send_message(_peer_username_field.text, _peer_message_field.text)
 
 func _register_server():
 	var handshake_address = [_handshake_ip_field.text, int(_handshake_port_field.text)]
@@ -86,6 +100,7 @@ func _register_server():
 	if password == "":
 		password == null
 	holepunch.init_server(handshake_address, local_address, user_name, password)
+	#netcode.create_server({"name": holepunch.get_user_name()})
 
 func _join_server():
 	var handshake_address = [_handshake_ip_field.text, int(_handshake_port_field.text)]
@@ -100,8 +115,12 @@ func _join_server():
 
 func _print_peers():
 	out("connected peers:")
-	for peer in holepunch.get_peers():
-		out("    " + peer['name'] + " at " + str(peer['address']))
+	if holepunch.is_connected():
+		for peer in holepunch.get_peers():
+			out("    " + peer['name'] + " at " + str(peer['address']))
+	else:
+		for peer in global.player_infos.keys():
+			out("    " + peer)
 
 
 
@@ -109,8 +128,21 @@ func _print_peers():
 ##           SIGNALS
 ######################################
 
+func _high_level_msg_received(message):
+	out("high level message received:")
+	out ("    " + str(message))
+
+func _confirmed_as_server(server_address):
+	out("confirmed as server")
+	out("    server address: " + str(server_address))
+	
+
+func _confirmed_as_client(server_address):
+	out("confirmed as client")
+	out("    server address: " + str(server_address))
+
 func _message_from_peer(data):
-	out("message from " + data['sender'] + ":")
+	out("message from " + data['__sender-name'] + ":")
 	out("   " + str(data['message']))
 
 
@@ -152,6 +184,6 @@ func _new_peer(info):
 	out("    " + info['name'] + " at " + str(info['address']))
 
 func _packet_received(data):
-	out("packet received of type: " + data['type'])
+	out("packet received of type: " + data['__type'])
 	
 
