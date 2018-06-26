@@ -45,7 +45,7 @@ func _ready():
 	holepunch.connect('peer_handshake_timeout', self, '_peer_handshake_timeout')
 	holepunch.connect('packet_sent', self, '_packet_sent')
 	#defaults
-	_handshake_ip_field.text = '127.0.0.1'# '35.197.160.85'
+	_handshake_ip_field.text = '35.197.160.85'# '127.0.0.1'# '35.197.160.85'
 	_handshake_port_field.text = '5160'
 	_local_ip_field.text = '192.168.1.127'
 	_local_port_field.text = '3334'
@@ -116,11 +116,16 @@ func _print_peers():
 func _confirmed_as_server(my_global_address):
 	out("confirmed as server")
 	out("    my global address: " + str(my_global_address))
+	var success = netcode.create_server(my_global_address, {"name": holepunch.get_user_name()})
+	if success:
+		out("successfully joined to higher networking system")
 
-func _confirmed_as_client(my_global_address):
+func _confirmed_as_client(my_global_address, server_address):
 	out("confirmed as client")
-	out("    my global address: " + str(my_global_address))
-
+	out("    server address: " + str(my_global_address))
+	var success = netcode.join_server(server_address, {"name": holepunch.get_user_name()})
+	if success:
+		out("successfully joined to higher networking system")
 
 func _message_from_peer(data):
 	out("message from " + data['__sender-name'] + ":")

@@ -1,6 +1,6 @@
 extends Node
 
-const PORT = 33334
+#const PORT = 33334
 const SERVER_ID = 1
 const MAX_PLAYERS = 4
 const COMPRESSION_MODE = NetworkedMultiplayerENet.COMPRESS_ZLIB
@@ -19,21 +19,21 @@ func _ready():
 #####          CREATION               #####
 ###########################################
 
-func create_server(player_info):
+func create_server(address, player_info):
 	global.player_infos = {}
 	global.player_infos[SERVER_ID] = player_info
 	my_info = player_info
 	me_as_peer = NetworkedMultiplayerENet.new()
 	me_as_peer.set_compression_mode(COMPRESSION_MODE)
-	me_as_peer.create_server(PORT, MAX_PLAYERS)
+	me_as_peer.create_server(address[1], MAX_PLAYERS)
 	get_tree().set_network_peer(me_as_peer)
 	return true
 
-func join_server(server_ip, player_info):
+func join_server(server_address, player_info):
 	my_info = player_info
 	me_as_peer = NetworkedMultiplayerENet.new()
 	me_as_peer.set_compression_mode(COMPRESSION_MODE)
-	me_as_peer.create_client(server_ip, PORT)
+	me_as_peer.create_client(server_address[0], server_address[1])
 	get_tree().set_network_peer(me_as_peer)
 	return true
 

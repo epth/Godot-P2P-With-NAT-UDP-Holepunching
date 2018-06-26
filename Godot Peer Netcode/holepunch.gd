@@ -130,6 +130,7 @@ func _process(delta):
 				'server-list': packet_data['server-list'],
 				'server-address': packet.sender_address
 			}
+			
 			emit_signal('received_server_list', info)
 		
 		elif packet.type == 'confirming-registration':
@@ -139,6 +140,7 @@ func _process(delta):
 			}
 			_handshake_server.add_outgoing_reliable_periodic('refreshing-server-registration', 
 													data, seconds_between_reg_refresh)
+			print("global address: " + str(packet.dest_address))
 			_global_address =  packet.dest_address
 			emit_signal('confirmed_as_server', _global_address)
 		
@@ -177,7 +179,7 @@ func _process(delta):
 					emit_signal('client_confirmed', peer.info())
 				else:
 					_global_address =  packet.dest_address
-					emit_signal('confirmed_as_client', _global_address)
+					emit_signal('confirmed_as_client', _global_address, peer.address())
 		
 		elif packet.type == 'peer-check':
 			var peer = _peers.get(packet.sender_name)
