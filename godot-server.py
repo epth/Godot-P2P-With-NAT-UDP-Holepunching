@@ -50,7 +50,8 @@ class ServerProtocol(DatagramProtocol):
                 '__sender-name': jData['__sender-name']
             }
             print(jData['__sender-name'] + " added to server list")
-            print("global adress: " + str(jData['global-address']))
+            print("global adress0: " + str(address))
+            print("global adress1: " + str(jData['global-address']))
             #send back confirmation
             self.send('confirming-registration', jData['__sender-name'], jData['global-address'], {}, jData['password'])
 
