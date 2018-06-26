@@ -48,6 +48,7 @@ var _peers = null
 var _packets = PacketContainer.new()
 var _socket = PacketPeerUDP.new()
 var _local_address = null
+var _global_address = null
 var _server_address = null
 var _handshake_server = null
 var _password = null
@@ -142,6 +143,7 @@ func _process(delta):
 													data, seconds_between_reg_refresh)
 			print("global address: " + str(packet.dest_address))
 			_server_address =  packet.dest_address
+			_global_address = packet.dest_address
 			emit_signal('confirmed_as_server', get_server_address())
 		
 		elif packet.type == 'confirming-registration-refresh':
@@ -179,6 +181,7 @@ func _process(delta):
 					emit_signal('client_confirmed', peer.info())
 				else:
 					_server_address =  peer.address()
+					_global_address = packet.dest_address
 					emit_signal('confirmed_as_client', get_server_address())
 		
 		elif packet.type == 'peer-check':
@@ -268,7 +271,8 @@ func quit_connection():
 	var ret_info = {
 		"i_am_server" : i_am_server(),
 		"server_address": get_server_address(),
-		"user_name" : get_user_name()
+		"user_name" : get_user_name(),
+		"my_address": _global_address
 	}
 	_user_name = null
 	_peers = null

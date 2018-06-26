@@ -75,7 +75,7 @@ func _cut_handshake():
 	if info["i_am_server"]:
 		netcode.create_server(info["server_address"], {"name": info["user_name"]})
 	else:
-		netcode.join_server(info["server_address"], {"name": info["user_name"]})
+		netcode.join_server(info["my_address"], info["server_address"], {"name": info["user_name"]})
 	out("successfully joined to higher networking system")
 	#global.goto_scene(global.lobby_scene)
 	

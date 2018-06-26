@@ -32,10 +32,12 @@ func create_server(address, player_info):
 	get_tree().set_network_peer(me_as_peer)
 	return true
 
-func join_server(server_address, player_info):
+func join_server(my_address, server_address, player_info):
 	me_as_peer = NetworkedMultiplayerENet.new()
 	me_as_peer.set_compression_mode(COMPRESSION_MODE)
-	me_as_peer.create_client(server_address[0], server_address[1])
+	#this won't work unless you wait for 3.1 or make the master branch from scratch
+	me_as_peer.create_client(server_address[0], server_address[1], 0, 0, my_address[1]) 
+	print(str(server_address))
 	get_tree().set_network_peer(me_as_peer)
 	player_info.id = get_tree().get_network_unique_id()
 	my_info = player_info
