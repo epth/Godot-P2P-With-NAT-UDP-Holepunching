@@ -2,7 +2,6 @@ extends Node
 
 """
 todo
-	* documentation
 	* remove signal for reliable message confirmation - 
 				it's ambiguous now that server is routing messages
 """
@@ -14,7 +13,6 @@ todo
 #############################################################
 signal confirmed_as_client
 signal confirmed_as_server
-
 signal session_terminated 
 signal packet_sent
 signal packet_received
