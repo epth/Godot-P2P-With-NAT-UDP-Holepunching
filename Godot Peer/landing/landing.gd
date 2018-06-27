@@ -85,7 +85,10 @@ func _request_server_list():
 
 
 func _send_message_to_peer():
-	holepunch.send_reliable_message_to_peer(_peer_username_field.text, _peer_message_field.text)
+	var to = _peer_username_field.text
+	if to == "":
+		to = null
+	holepunch.send_reliable_message_to_peer(to, _peer_message_field.text)
 
 
 func _register_server():
@@ -111,7 +114,7 @@ func _join_server():
 func _print_peers():
 	out("connected peers:")
 	for peer in holepunch.get_peers():
-		out("    " + peer['name'])
+		out("    " + peer)
 
 
 
@@ -130,7 +133,7 @@ func _confirmed_as_client(server_address):
 	out("    server address: " + str(server_address))
 
 func _message_from_peer(data):
-	out("message from " + data['__sender-name'] + ":")
+	out("message from " + data['from'] + ":")
 	out("   " + str(data['message']))
 
 

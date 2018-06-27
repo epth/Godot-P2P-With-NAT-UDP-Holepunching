@@ -42,9 +42,10 @@ const seconds_between_reg_refresh = 15
 const seconds_to_await_reply = 1
 const attempts_before_expiration = 5
 #peers can't have same name as handshake server
-const _SERVER_NAME = "HANDSHAKE_SERVER"
+const _HS_SERVER_NAME = "HANDSHAKE_SERVER"
 var _user_name = null
 var _i_am_server = null
+var _server_name = null
 var _peers = null
 var _packets = PacketContainer.new()
 var _socket = PacketPeerUDP.new()
@@ -92,7 +93,7 @@ func _process(delta):
 					else:
 						quit_connection()
 					return
-				if packet.type == 'peer-check' or packet.type == 'update-peer-list':
+				if packet.type == 'peer-check':
 					emit_signal('peer_timeout', packet.dest_name)
 					if _i_am_server:
 						drop_peer(packet.dest_name)
@@ -199,15 +200,43 @@ func _process(delta):
 			_packets.reset_expiry_for_all_of_peer_and_type(packet.sender_name, 'peer-check')
 		
 		elif packet.type == 'unreliable-peer-message':
-			emit_signal('received_unreliable_message_from_peer', packet.get_copy_of_json_data())
+			if _i_am_server:
+				var peers_to_send_msg = []
+				if packet_data['is-broadcast']:
+					peers_to_send_msg = _peers.get_all()
+				else:
+					var peer = _peers.get(packet_data['to'])
+					if peer:
+						peers_to_send_msg.append(peer)
+				for peer in peers_to_send_msg:
+					if peer.name() != packet.sender_name:
+						peer.send_unreliable_message(packet_data['message'], 
+													 packet_data['from'], peer.name())
+			if packet_data['is-broadcast'] or packet_data['to'] == _user_name:
+				emit_signal('received_unreliable_message_from_peer', packet.get_copy_of_json_data())
+
 			
 		elif packet.type == 'reliable-peer-message':
-			var peer = _peers.get(packet.sender_name)
-			if peer and peer.is_confirmed():
-				if not peer.msg_history_contains(packet_data['message-id']):
-					peer.add_id_to_msg_history(packet_data['message-id'])
-					emit_signal('received_reliable_message_from_peer', packet.get_copy_of_json_data())
-				peer.add_outgoing_unreliable_now('reliable-peer-message-response', packet_data)
+			if _i_am_server:
+				var peers_to_send_msg = []
+				if packet_data['is-broadcast']:
+					peers_to_send_msg = _peers.get_all()
+				else:
+					var peer = _peers.get(packet_data['to'])
+					if peer:
+						peers_to_send_msg.append(peer)
+				for peer in peers_to_send_msg:
+					if peer.name() != packet.sender_name:
+						peer.send_reliable_message(packet_data['message'], 
+													packet_data['from'], peer.name(), 
+													packet_data['message-id'])
+			if packet_data['is-broadcast'] or packet_data['to'] == _user_name:
+				var peer = _peers.get(packet.sender_name)
+				if peer and peer.is_confirmed():
+					if not peer.msg_history_contains(packet_data['message-id']):
+						peer.add_id_to_msg_history(packet_data['message-id'])
+						emit_signal('received_reliable_message_from_peer', packet.get_copy_of_json_data())
+					peer.add_outgoing_unreliable_now('reliable-peer-message-response', packet_data)
 
 		
 		elif packet.type == 'reliable-peer-message-response':
@@ -238,15 +267,6 @@ func _process(delta):
 		elif packet.type == 'update-peer-list-response':
 			_packets.remove_all_of_peer_and_type(packet.sender_name, 'update-peer-list')
 		
-		elif packet.type == 'request-for-server-to-send-unreliable-message':
-			pass
-			
-		elif packet.type == 'request-for-server-to-send-reliable-message':
-			pass
-			
-		elif packet.type == 'request-for-server-to-send-reliable-message-response': 
-			pass
-
 
 
 #############################################################
@@ -259,7 +279,7 @@ func get_user_name():
 
 func get_peers():
 	if _peers != null:
-		return _peers.get_confirmed()
+		return _peers.get_confirmed_names()
 	else:
 		return []
 
@@ -272,31 +292,21 @@ func get_server_address():
 	else:
 		return null
 
+
+
+		
+
 func send_unreliable_message_to_peer(peer_name, message):
-	if _peers == null:
-		emit_signal('error', 'uninitialised client')
-		return
-	var peer = _peers.get(peer_name)
-	if peer:
-		peer.send_unreliable_message(message)
-	else:
-		emit_signal('error', 'no peer named ' + peer_name)
+	_send_message_to_peer(peer_name, message, false)
 
 
 func send_reliable_message_to_peer(peer_name, message):
-	if _peers == null:
-		emit_signal('error', 'uninitialised client')
-		return
-	var peer = _peers.get(peer_name)
-	if peer:
-		peer.send_reliable_message(message)
-	else:
-		emit_signal('error', 'no peer named ' + peer_name)
+	_send_message_to_peer(peer_name, message, true)
 
 func request_server_list(handshake_address):
 	if not _handshake_server or _handshake_server.address() != handshake_address:
-		_packets.remove_all_of_peer(_SERVER_NAME)
-		_handshake_server = Peer.new(self, _SERVER_NAME, _generate_random_alpha_numeric(10),
+		_packets.remove_all_of_peer(_HS_SERVER_NAME)
+		_handshake_server = Peer.new(self, _HS_SERVER_NAME, _generate_random_alpha_numeric(10),
 									  _socket, _packets, handshake_address)
 	var data = {'password': _handshake_server.password()}
 	_handshake_server.add_outgoing_reliable_now('requesting-server-list', data)
@@ -311,6 +321,7 @@ func quit_connection():
 	_user_name = null
 	_peers = null
 	_i_am_server = null
+	_server_name = null
 	_handshake_server = null
 	_local_address = null
 	_password = null
@@ -320,7 +331,7 @@ func quit_connection():
 	return ret_info
 
 func drop_connection_with_handshake_server():
-	_packets.remove_all_of_peer(_SERVER_NAME)
+	_packets.remove_all_of_peer(_HS_SERVER_NAME)
 	_handshake_server = null
 
 func is_connected():
@@ -344,6 +355,7 @@ func init_server(handshake_address, local_address, server_name, password=null):
 	if not _common_init(server_name, handshake_address, local_address):
 		return 
 	self._i_am_server = true
+	self._server_name = server_name
 	self._password = password
 	if not self._password:
 		_password = server_name
@@ -360,6 +372,7 @@ func init_client(handshake_address, local_address, user_name, server_name, passw
 	if not _common_init(user_name, handshake_address, local_address):
 		return
 	self._i_am_server = false
+	self._server_name = server_name
 	self._password = password
 	if not self._password:
 		_password = server_name
@@ -378,7 +391,7 @@ func init_client(handshake_address, local_address, user_name, server_name, passw
 #############################################################
 
 func _common_init(user_name, handshake_address, local_address):
-	if user_name == _SERVER_NAME or user_name == "":
+	if user_name == _HS_SERVER_NAME or user_name == "":
 		emit_signal('error', 'invalid user name: "' + user_name + '"')
 		return false
 	_user_name = user_name
@@ -387,7 +400,7 @@ func _common_init(user_name, handshake_address, local_address):
 	_packets = PacketContainer.new()
 	_peers = PeerContainer.new()
 	handshake_address = [handshake_address[0], int(handshake_address[1])]
-	_handshake_server = Peer.new(self, _SERVER_NAME, _generate_random_alpha_numeric(10),
+	_handshake_server = Peer.new(self, _HS_SERVER_NAME, _generate_random_alpha_numeric(10),
 									  _socket, _packets, handshake_address)
 	if _socket.listen(_local_address[1]) != OK:
 		emit_signal('error', 'invalid listener port')
@@ -426,11 +439,33 @@ func _get_incoming_packet():
 	return peer.check_security_and_make_incoming_packet(jdata, sender_address)
 
 
-func _peer_sent_packet(packet):
-	"""change to approproate signal later- just tetsing for now"""
-	emit_signal('error', packet.type)
-
-
+func _send_message_to_peer(peer_name, message, reliable):
+	if _peers == null:
+		emit_signal('error', 'unitialised')
+		return
+	if _i_am_server:
+		var peers_to_send_to = []
+		if peer_name == null:
+			peers_to_send_to = _peers.get_all()
+		else:
+			var peer = _peers.get(peer_name)
+			if peer:
+				peers_to_send_to.append(peer)
+		for peer_to_send_to in peers_to_send_to:
+			if reliable:
+				peer_to_send_to.send_reliable_message(message, _user_name, 
+																	peer_to_send_to.name())
+			else:
+				peer_to_send_to.send_unreliable_message(message, _user_name, 
+																	peer_to_send_to.name())
+	else:
+		if reliable:
+			_peers.get(_server_name).send_reliable_message(message, _user_name, peer_name)
+		else:
+			_peers.get(_server_name).send_unreliable_message(message, _user_name, peer_name)
+			
+			
+			
 #############################################################
 #############################################################
 #                        PACKET CLASSES                     #
@@ -664,20 +699,27 @@ class Peer:
 
 	
 
-	func send_reliable_message(message):
-		if not is_confirmed():
-			return false
-		var data = {
-			'message': message,
-			'message-id': self._get_unique_msg_id()
-		}
+	func send_reliable_message(message, from_name, to_name, unique_id_override=null):
+		var is_broadcast = to_name == null
+		var data = {'is-broadcast': is_broadcast}
+		data['from'] = from_name
+		if not is_broadcast:
+			data['to'] = to_name
+		data['message'] = message
+		if unique_id_override == null:
+			data['message-id'] = self._get_unique_msg_id()
+		else:
+			data['message-id'] = unique_id_override
 		add_outgoing_reliable_now('reliable-peer-message', data, null)
 
-	func send_unreliable_message(message):
-		if not is_confirmed():
-			return false
-		var data = {'message': message}
-		add_outgoing_unreliable_now('unreliable-peer-message', data)
+	func send_unreliable_message(message,  from_name, to_name):
+		var is_broadcast = to_name == null
+		var data = {'is-broadcast': is_broadcast}
+		data['from'] = from_name
+		if not is_broadcast:
+			data['to'] = to_name
+		data['message'] = message
+		add_outgoing_unreliable_now('unreliable-peer-message', data, null)
 
 
 	func add_id_to_msg_history(msg_id):
