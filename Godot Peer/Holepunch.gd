@@ -181,10 +181,9 @@ func _process(delta):
 				peer.add_outgoing_reliable_periodic('peer-check', {}, secs_between_peer_checks)
 				if _i_am_server:
 					emit_signal('client_confirmed', peer.info())
-					peer.send_peer_list_update_all(_peers.get_all())
+					peer.send_peer_list_update('add', _peers.get_all())
 					for existing_peer in _peers.get_all():
-						if existing_peer.name() != peer.name():
-							existing_peer.send_peer_list_update(peer)
+						existing_peer.send_peer_list_update('add', [peer])
 				else:
 					_server_address =  peer.address()
 					_global_address = packet.dest_address
@@ -248,21 +247,23 @@ func _process(delta):
 			emit_signal('peer_confirmed_reliable_message_received', packet.get_copy_of_json_data())
 			
 		elif packet.type == 'update-peer-list':
-			if packet_data['full-refresh'] == true:
-				for peer in _peers.get_all():
-					if peer.name() != packet.sender_name:
-						_packets.remove_all_of_peer(peer.name())
-						_peers.remove(peer.name())
-			for peer_name in packet_data['peers'].keys():
-				if peer_name ==_user_name:
-					continue
-				var peer_info = packet_data['peers'][peer_name]
-				var peer = Peer.new(self, peer_name, _password, _socket, _packets,
+			if packet_data['action'] == 'add':
+				for peer_name in packet_data['peers'].keys():
+					if peer_name ==_user_name:
+						continue
+					var peer_info = packet_data['peers'][peer_name]
+					var peer = Peer.new(self, peer_name, _password, _socket, _packets,
 									peer_info['global-address'], peer_info['local-address'])
-				peer.confirm(peer_info['use-global'])
-				_peers.add(peer)
+					peer.confirm(peer_info['use-global'])
+					_peers.add(peer)
+			elif packet_data['action'] == 'remove':
+				for peer_name in packet_data['peers'].keys():
+					_packets.remove_all_of_peer(packet_data['peer-name'])
+					_peers.remove(packet_data['peer-name'])
 			_peers.get(packet.sender_name).add_outgoing_unreliable_now('update-peer-list-response', {})
 			emit_signal('peer_list_updated', _peers.get_confirmed_names())
+				
+				
 				
 		elif packet.type == 'update-peer-list-response':
 			_packets.remove_all_of_peer_and_type(packet.sender_name, 'update-peer-list')
@@ -345,7 +346,7 @@ func drop_peer(peer_name):
 		if peer:
 			emit_signal('peer_dropped', peer_name)
 			for existing_peer in _peers.get_all():
-				existing_peer.send_peer_list_update_all(_peers.get_all())
+				existing_peer.send_peer_list_update('remove', peer)
 		else:
 			emit_signal('error', 'no peer named ' + peer_name)
 	else:
@@ -443,6 +444,10 @@ func _send_message_to_peer(peer_name, message, reliable):
 	if _peers == null:
 		emit_signal('error', 'unitialised')
 		return
+	if peer_name != null and _peers.get(peer_name) == null:
+		emit_signal('error', 'no peer named "' + peer_name + '"')
+		return
+		
 	if _i_am_server:
 		var peers_to_send_to = []
 		if peer_name == null:
@@ -820,30 +825,16 @@ class Peer:
 		data['__hash-string'] = hash_string
 		return data
 		
-	func send_peer_list_update_all(existing_peers):
+	func send_peer_list_update(action, peers):
 		var type = 'update-peer-list'
-		var data = {'full-refresh': true}
+		var data = {'action': action}
 		data['peers'] = {}
-		for existing_peer in existing_peers:
-			data['peers'][existing_peer.name()] = {
-				'global-address': existing_peer.global_address(),
-				'local-address': existing_peer.local_address(),
-				'use-global': existing_peer.address() == existing_peer.global_address()
+		for peer in peers:
+			data['peers'][peer.name()] = {
+				'global-address': peer.global_address(),
+				'local-address': peer.local_address(),
+				'use-global': peer.address() == peer.global_address()
 			}
-		add_outgoing_reliable_now(type, data)
-				
-				
-				
-	
-	func send_peer_list_update(peer):
-		var type = 'update-peer-list'
-		var data = {'full-refresh': false}
-		data['peers'] = {}
-		data['peers'][peer.name()] = {
-			'global-address': peer.global_address(),
-			'local-address': peer.local_address(),
-			'use-global': peer.address() == peer.global_address()
-		}
 		add_outgoing_reliable_now(type, data)
 
 
