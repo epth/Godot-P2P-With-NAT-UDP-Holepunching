@@ -24,10 +24,11 @@ signal received_unreliable_message_from_peer
 signal received_reliable_message_from_peer 
 signal peer_confirmed_reliable_message_received
 signal reliable_message_timeout
-signal peer_check_timeout
-signal peer_handshake_timeout
+signal peer_timeout
+signal peer_connection_failed
 signal error
 signal received_server_list
+signal peer_list_updated
 
 
 
@@ -84,15 +85,15 @@ func _process(delta):
 					quit_connection()
 					return
 				if packet.type == 'address-inquiry':
-					emit_signal('peer_handshake_timeout', packet.dest_name)
+					emit_signal('peer_connection_failed', packet.dest_name)
 					if _i_am_server:
 						#no official peer drop here- they were never really connected
 						_peers.remove(packet.dest_name)
 					else:
 						quit_connection()
 					return
-				if packet.type == 'peer-check':
-					emit_signal('peer_check_timeout', packet.dest_name)
+				if packet.type == 'peer-check' or packet.type == 'update-peer-list':
+					emit_signal('peer_timeout', packet.dest_name)
 					if _i_am_server:
 						drop_peer(packet.dest_name)
 					else:
@@ -179,6 +180,10 @@ func _process(delta):
 				peer.add_outgoing_reliable_periodic('peer-check', {}, secs_between_peer_checks)
 				if _i_am_server:
 					emit_signal('client_confirmed', peer.info())
+					peer.send_peer_list_update_all(_peers.get_all())
+					for existing_peer in _peers.get_all():
+						if existing_peer.name() != peer.name():
+							existing_peer.send_peer_list_update(peer)
 				else:
 					_server_address =  peer.address()
 					_global_address = packet.dest_address
@@ -212,6 +217,35 @@ func _process(delta):
 			_packets.remove_all_of_peer_and_type_with_key_value(packet.sender_name, type, 
 																 key, value)
 			emit_signal('peer_confirmed_reliable_message_received', packet.get_copy_of_json_data())
+			
+		elif packet.type == 'update-peer-list':
+			if packet_data['full-refresh'] == true:
+				for peer in _peers.get_all():
+					if peer.name() != packet.sender_name:
+						_packets.remove_all_of_peer(peer.name())
+						_peers.remove(peer.name())
+			for peer_name in packet_data['peers'].keys():
+				if peer_name ==_user_name:
+					continue
+				var peer_info = packet_data['peers'][peer_name]
+				var peer = Peer.new(self, peer_name, _password, _socket, _packets,
+									peer_info['global-address'], peer_info['local-address'])
+				peer.confirm(peer_info['use-global'])
+				_peers.add(peer)
+			_peers.get(packet.sender_name).add_outgoing_unreliable_now('update-peer-list-response', {})
+			emit_signal('peer_list_updated', _peers.get_confirmed_names())
+				
+		elif packet.type == 'update-peer-list-response':
+			_packets.remove_all_of_peer_and_type(packet.sender_name, 'update-peer-list')
+		
+		elif packet.type == 'request-for-server-to-send-unreliable-message':
+			pass
+			
+		elif packet.type == 'request-for-server-to-send-reliable-message':
+			pass
+			
+		elif packet.type == 'request-for-server-to-send-reliable-message-response': 
+			pass
 
 
 
@@ -293,13 +327,18 @@ func is_connected():
 	return _user_name != null
 
 func drop_peer(peer_name):
-	_packets.remove_all_of_peer(peer_name)
-	var peer = _peers.get(peer_name)
-	_peers.remove(peer_name)
-	if peer:
-		emit_signal('peer_dropped', peer_name)
+	if _i_am_server:
+		_packets.remove_all_of_peer(peer_name)
+		var peer = _peers.get(peer_name)
+		_peers.remove(peer_name)
+		if peer:
+			emit_signal('peer_dropped', peer_name)
+			for existing_peer in _peers.get_all():
+				existing_peer.send_peer_list_update_all(_peers.get_all())
+		else:
+			emit_signal('error', 'no peer named ' + peer_name)
 	else:
-		emit_signal('error', 'no peer named ' + peer_name)
+		emit_signal('error', 'only server can drop peers')
 
 func init_server(handshake_address, local_address, server_name, password=null):
 	if not _common_init(server_name, handshake_address, local_address):
@@ -739,27 +778,53 @@ class Peer:
 		data['__hash-string'] = hash_string
 		return data
 		
-
-
+	func send_peer_list_update_all(existing_peers):
+		var type = 'update-peer-list'
+		var data = {'full-refresh': true}
+		data['peers'] = {}
+		for existing_peer in existing_peers:
+			data['peers'][existing_peer.name()] = {
+				'global-address': existing_peer.global_address(),
+				'local-address': existing_peer.local_address(),
+				'use-global': existing_peer.address() == existing_peer.global_address()
+			}
+		add_outgoing_reliable_now(type, data)
+				
+				
+				
+	
+	func send_peer_list_update(peer):
+		var type = 'update-peer-list'
+		var data = {'full-refresh': false}
+		data['peers'] = {}
+		data['peers'][peer.name()] = {
+			'global-address': peer.global_address(),
+			'local-address': peer.local_address(),
+			'use-global': peer.address() == peer.global_address()
+		}
+		add_outgoing_reliable_now(type, data)
 
 
 class PeerContainer:
 	var _peers = {}
+	
+	func get_all():
+		return _peers.values()
 	func get(peer_name):
 		if _peers.has(peer_name):
 			return _peers[peer_name]
 		return null
-	func get_confirmed():
+	func get_confirmed_names():
 		var ret = []
 		for peer in _peers.values():
 			if peer.is_confirmed():
-				ret.push_back(peer.info())
+				ret.push_back(peer.name())
 		return ret
-	func get_unconfirmed():
+	func get_unconfirmed_names():
 		var ret = []
 		for peer in _peers.values():
 			if not peer.is_confirmed():
-				ret.push_back(peer.info())
+				ret.push_back(peer.name())
 		return ret
 	func add(peer):
 		_peers[peer.name()] = peer

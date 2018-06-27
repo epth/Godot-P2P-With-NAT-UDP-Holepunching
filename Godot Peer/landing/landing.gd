@@ -41,11 +41,12 @@ func _ready():
 	
 	holepunch.connect('peer_confirmed_reliable_message_received', self, '_peer_confirmed_message')
 	holepunch.connect('reliable_message_timeout', self, '_reliable_message_timeout')
-	holepunch.connect('peer_check_timeout', self, '_peer_check_timeout')
-	holepunch.connect('peer_handshake_timeout', self, '_peer_handshake_timeout')
+	holepunch.connect('peer_timeout', self, '_peer_check_timeout')
+	holepunch.connect('peer_connection_failed', self, '_peer_handshake_timeout')
 	holepunch.connect('packet_sent', self, '_packet_sent')
+	holepunch.connect('peer_list_updated', self, '_peer_list_updated')
 	#defaults
-	_handshake_ip_field.text = '35.197.160.85'# '127.0.0.1'# '35.197.160.85'
+	_handshake_ip_field.text =  '127.0.0.1'# '35.197.160.85'
 	_handshake_port_field.text = '5160'
 	_local_ip_field.text = '192.168.1.127'
 	_local_port_field.text = '3334'
@@ -56,6 +57,11 @@ func out(message):
 	"""prints a message to the gui console"""
 	_output_field.add_text(message)
 	_output_field.newline()
+
+func _peer_list_updated(peers):
+	out("peer list updated:")
+	for peer in peers:
+		out("    " + peer)
 
 func _packet_sent(data):
 	out("packet sent of type: " + data['__type'] +" to " + data['__destination-name'])
@@ -105,7 +111,7 @@ func _join_server():
 func _print_peers():
 	out("connected peers:")
 	for peer in holepunch.get_peers():
-		out("    " + peer['name'] + " at " + str(peer['address']))
+		out("    " + peer['name'])
 
 
 
