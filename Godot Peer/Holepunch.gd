@@ -289,9 +289,14 @@ func get_server_address():
 	else:
 		return null
 
+func get_peer_info(peer_name):
+	if _peers == null:
+		return null
+	var peer = _peers.get(peer_name)
+	if peer == null:
+		return null
+	return peer.info().duplicate()
 
-
-		
 
 func send_unreliable_message_to_peer(peer_name, message):
 	_send_message_to_peer(peer_name, message, false)

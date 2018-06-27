@@ -104,7 +104,7 @@ func _join_server():
 func _print_peers():
 	out("connected peers:")
 	for peer in holepunch.get_peers():
-		out("    " + peer)
+		out("    " + str(holepunch.get_peer_info(peer)))
 
 
 
