@@ -25,12 +25,12 @@ func _ready():
 	_join_server_button.connect('pressed', self, '_join_server')
 	_get_server_list_button.connect('pressed', self, '_request_server_list')
 	_cut_handshake_button.connect('pressed', self, '_cut_handshake')
+	
 	#connect P2P signals
 	holepunch.connect('confirmed_as_server', self, '_confirmed_as_server')
 	holepunch.connect('confirmed_as_client', self, '_confirmed_as_client')
 	
 	holepunch.connect('session_terminated', self, '_give_up')
-	holepunch.connect('peer_dropped', self, '_peer_dropped')
 	holepunch.connect('client_confirmed', self, '_new_peer')
 	holepunch.connect('packet_received', self, '_packet_received')
 	holepunch.connect('packet_blocked', self, '_packet_blocked')
@@ -38,13 +38,13 @@ func _ready():
 	holepunch.connect('received_reliable_message_from_peer', self, '_message_from_peer')
 	holepunch.connect('error', self, '_error')
 	holepunch.connect('received_server_list', self, '_print_server_list')
-	
 	holepunch.connect('peer_confirmed_reliable_message_received', self, '_peer_confirmed_message')
 	holepunch.connect('reliable_message_timeout', self, '_reliable_message_timeout')
 	holepunch.connect('peer_timeout', self, '_peer_check_timeout')
 	holepunch.connect('peer_connection_failed', self, '_peer_handshake_timeout')
 	holepunch.connect('packet_sent', self, '_packet_sent')
 	holepunch.connect('peer_list_updated', self, '_peer_list_updated')
+	
 	#defaults
 	_handshake_ip_field.text =  '127.0.0.1'# '35.197.160.85'
 	_handshake_port_field.text = '5160'
@@ -58,16 +58,6 @@ func out(message):
 	_output_field.add_text(message)
 	_output_field.newline()
 
-func _peer_list_updated(peers):
-	out("peer list updated:")
-	for peer in peers:
-		out("    " + peer)
-
-func _packet_sent(data):
-	out("packet sent of type: " + data['__type'] +" to " + data['__destination-name'])
-
-func _packet_blocked(address):
-	out("packet blocked from: " + str(address))
 
 ######################################
 ##           INPUTS
@@ -122,6 +112,16 @@ func _print_peers():
 ##           SIGNALS
 ######################################
 
+func _peer_list_updated(peers):
+	out("peer list updated:")
+	for peer in peers:
+		out("    " + peer)
+
+func _packet_sent(data):
+	out("packet sent of type: " + data['__type'] +" to " + data['__destination-name'])
+
+func _packet_blocked(address):
+	out("packet blocked from: " + str(address))
 
 func _confirmed_as_server(server_address):
 	out("confirmed as server")
@@ -167,12 +167,9 @@ func _give_up():
 	_join_server_button.disabled = false
 	_register_server_button.disabled = false
 
-func _peer_dropped(peer_name):
-	out("Peer dropped: " + peer_name)
-
-func _new_peer(info):
+func _new_peer(peer):
 	out("New peer:")
-	out("    " + info['name'] + " at " + str(info['address']))
+	out("    " + peer)
 
 func _packet_received(data):
 	out("packet received of type: " + data['__type'])
