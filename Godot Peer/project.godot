@@ -16,7 +16,6 @@ config/icon="res://icon.png"
 
 [autoload]
 
-global="*res://global.gd"
 holepunch="*res://holepunch.gd"
 
 [display]

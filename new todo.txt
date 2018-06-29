@@ -1,0 +1,17 @@
+add get handshake server address 
+	we still want gethostserver addres
+	
+add errors for all packets timing out - or make another signal "packet timeout" and "packet exipired"
+make sure peer updated is emitting every time the peres are updated	
+	eg its not firing when server gets a new client
+	
+send_message_to_peer should return bool - true if the packet sends
+
+
+make it properly P2P
+	sending messages should go directly to recipient
+	broadcats sshould send one to each
+	means peer checks need to happen between clients
+		if they fail, ask server host for address and try again
+			the server host will propogate if the peer is actually gone
+	
