@@ -213,5 +213,5 @@ func _packet_sent(packet_data):
 		+ packet_data['__type'])
 
 func _confirmed_message(packet_data):
-	print("peer " + packet_data['__sender'] + "has confirmed reliable message received")
+	print("peer " + packet_data['__sender-name'] + " has confirmed reliable message received")
 

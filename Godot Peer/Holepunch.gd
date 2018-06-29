@@ -1,12 +1,5 @@
 extends Node
 
-"""
-todo
-	* remove signal for reliable message confirmation - 
-				it's ambiguous now that server is routing messages
-"""
-
-
 #############################################################
 #############################################################
 #                           SIGNALS                         #
@@ -91,7 +84,7 @@ func _process(delta):
 					quit_connection()
 					return
 				if packet.type == 'address-inquiry':
-					emit_signal('error', 'peer connection failed: ' + packet.dest_name)
+					emit_signal('error', 'peer connection with ' + packet.dest_name + ' failed.')
 					if _i_am_server:
 						#no official peer drop here- they were never really connected
 						_peers.remove(packet.dest_name)
@@ -133,7 +126,7 @@ func _process(delta):
 			
 		var packet_data =  packet.get_copy_of_json_data()
 		#add sender-name for the handshake server
-		if packet.sender_address == get_handshake_server_address():
+		if _addresses_are_equal(packet.sender_address, get_handshake_server_address()):
 			packet_data['__sender-name'] = _handshake_server.name()
 		emit_signal('packet_received', packet_data.duplicate())
 		
@@ -180,8 +173,17 @@ func _process(delta):
 			#remove ignores if there are none matching
 			_packets.remove_all_of_type('requesting-to-join-server')
 			var peer_name = packet_data['peer-name']
-			#only add if we haven't already
-			if _peers.get(peer_name) != null or peer_name == _user_name:
+
+			var existing_peer = _peers.get(peer_name)
+			
+			if existing_peer and not existing_peer.is_confirmed():
+				return
+				
+			var same_address = false
+			if existing_peer:
+				same_address = (_addresses_are_equal(existing_peer.address(), packet_data['global-address']) 
+								or _addresses_are_equal(existing_peer.address(), packet_data['local-address']))
+			if peer_name == _user_name or (existing_peer and not same_address):
 				emit_signal('error', 'attempted connection with invalid peer name: "' + peer_name + '"')
 				if not _i_am_server:
 					quit_connection()
@@ -425,6 +427,10 @@ func _common_init(user_name, handshake_address, local_address):
 		quit_connection()
 		return false
 	return true
+
+
+func _addresses_are_equal(lhs, rhs):
+	return str(lhs[0]) == str(rhs[0]) and int(lhs[1]) == int(rhs[1])
 
 func _update_peer_list(action, peer_infos):
 	if _i_am_server:
