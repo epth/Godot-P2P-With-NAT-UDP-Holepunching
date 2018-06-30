@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+#Author: Daniel Dowsett
+#Year: 2018
+#Description: A custom handshake server for the P2P Godot backend Holepunch,
+#by the same author. note, this will work online on onLAN, but
+#is not strictly necessary on LANs as the Godot backend can double as a handshake server
+#NOTE: ensure the firewall is enabled for the port, and not disbaled for python.
 #based on: https://github.com/stylesuxx/udp-hole-punching
 #great info here: http://www.brynosaurus.com/pub/net/p2pnat/
 

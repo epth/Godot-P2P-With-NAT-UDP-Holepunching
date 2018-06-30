@@ -1,3 +1,12 @@
+#Author: Daniel Dowsett
+#Year: 2018
+#Desription: A P2P backend for Godot games offering password
+#authorisation for server hosts and reliable messaging. Takes care
+#of managing connections, offering signals and functions to build apps 
+#upon.
+#NOTE: Make sure the relevant ports are open on the firewall
+#and that Godot is not blocked on the firewall.
+
 extends Node
 
 #############################################################
@@ -86,8 +95,7 @@ func _process(delta):
 				if packet.type == 'address-inquiry':
 					emit_signal('error', 'peer connection with ' + packet.dest_name + ' failed.')
 					if _i_am_server:
-						#no official peer drop here- they were never really connected
-						_peers.remove(packet.dest_name)
+						drop_peer(packet.dest_name)
 					else:
 						quit_connection()
 					return
@@ -121,6 +129,10 @@ func _process(delta):
 			#note: you'll get a block on the second address inquiry response received
 			#because the peer will have confirmed as the first address- so there's
 			#an address mismatch. 
+			#
+			#You'll also get a block if you're acting handshake server and peers send
+			#the handshake any packets (unless they're handled in _get_incoming_packet directly)
+			#These include heartbeat packets and drop-me packets.
 			emit_signal('packet_blocked', [_socket.get_packet_ip(), _socket.get_packet_port()])
 			return
 			
@@ -154,7 +166,7 @@ func _process(delta):
 				'seconds-before-expiry': secs_reg_valid
 			}
 			_handshake_server.add_outgoing_reliable_periodic('refreshing-server-registration', 
-													data, secs_between_reg_refresh)
+															data, secs_between_reg_refresh)
 			_server_address =  packet.dest_address
 			_global_address = packet.dest_address
 			emit_signal('confirmed_as_server', packet.sender_address.duplicate())
@@ -201,15 +213,9 @@ func _process(delta):
 				if not _packets.contains_peer_and_type(_handshake_server.name(), 
 														'requesting-to-join-server'):
 					return
-			var their_info = {
-				'peer-name': packet_data['peer-name'],
-				'local-address': packet_data['local-address'],
-				'global-address': packet_data['global-address']
-			}
 			_handle_handshake_info(packet_data)
 			
 
-		
 		elif packet.type == 'address-inquiry':
 			var peer_name = packet.sender_name
 			var address = packet.sender_address
@@ -219,6 +225,7 @@ func _process(delta):
 				return
 			peer.add_outgoing_unreliable_now('address-inquiry-response', packet_data, address)
 
+
 		elif packet.type == 'address-inquiry-response':
 			_packets.remove_all_of_peer_and_type(packet.sender_name, 'address-inquiry')
 			var peer = _peers.get(packet.sender_name)
@@ -227,8 +234,8 @@ func _process(delta):
 				peer.add_outgoing_reliable_periodic('peer-check', {}, secs_between_peer_checks)
 				if _i_am_server:
 					emit_signal('peer_joined', peer.name())
-					peer.send_peer_list_update('add', _peers.get_all())
-					for existing_peer in _peers.get_all():
+					peer.send_peer_list_update('add', _peers.get_confirmed())
+					for existing_peer in _peers.get_confirmed():
 						if existing_peer.name() != peer.name():
 							existing_peer.send_peer_list_update('add', [peer])
 				else:
@@ -237,6 +244,7 @@ func _process(delta):
 					emit_signal('confirmed_as_client', 
 								get_server_address().duplicate())
 					emit_signal('peer_joined', peer.name())
+		
 		
 		elif packet.type == 'peer-check':
 			var peer = _peers.get(packet.sender_name)
@@ -248,12 +256,11 @@ func _process(delta):
 			_packets.reset_expiry_for_all_of_peer_and_type(packet.sender_name, 'peer-check')
 		
 		elif packet.type == 'unreliable-peer-message':
-			#if packet_data['is-broadcast'] or packet_data['to'] == _user_name:
 			emit_signal('received_unreliable_message_from_peer', packet.get_copy_of_json_data())
 
 			
 		elif packet.type == 'reliable-peer-message':
-			#if packet_data['is-broadcast'] or packet_data['to'] == _user_name:
+
 			var peer = _peers.get(packet.sender_name)
 			if not peer.msg_history_contains(packet_data['message-id']):
 				peer.add_id_to_msg_history(packet_data['message-id'])
@@ -327,7 +334,7 @@ func send_message_to_peer(peer_name, message, reliable=false):
 		emit_signal('error', 'unitialised')
 		return
 	if peer_name == null: #broadcast
-		for peer in _peers.get_all():
+		for peer in _peers.get_confirmed():
 			peer.send_message(message, true, reliable)
 	else:
 		if _peers.get(peer_name) == null:
@@ -344,12 +351,14 @@ func request_server_list(handshake_address):
 	_handshake_server.add_outgoing_reliable_now('requesting-server-list', data)
 
 func quit_connection():
-	var data = {'name': _user_name}
+	
 	if _handshake_server != null:
+		var data = {'name': _user_name}
 		_handshake_server.add_outgoing_unreliable_now('drop-me', data)
 	if _peers:
-		for peer in _peers.get_all():
-			 peer.add_outgoing_unreliable_now('drop-me', data)
+		for peer in _peers.get_confirmed():
+			var data = {'name': _user_name}
+			peer.add_outgoing_unreliable_now('drop-me', data)
 	
 	var ret_info = {
 		"i_am_server" : i_am_server(),
@@ -371,10 +380,9 @@ func quit_connection():
 
 func drop_connection_with_handshake_server():
 	_packets.remove_all_of_peer(_HS_SERVER_NAME)
-	var handshake_temp = _handshake_server
-	if handshake_temp != null:
+	if _handshake_server != null:
 		var data = {'name': _user_name}
-		handshake_temp.add_outgoing_unreliable_now('drop-me', data)
+		_handshake_server.add_outgoing_unreliable_now('drop-me', data)
 	_handshake_server = null
 
 func is_connected():
@@ -385,17 +393,12 @@ func drop_peer(peer_name):
 	if _i_am_server:
 		var peer = _peers.get(peer_name)
 		if peer:
-			var peer_infos = {}
-			peer_infos[peer.name()] = {
-				'global-address': peer.global_address(),
-				'local-address': peer.local_address(),
-				'use-global': peer.address() == peer.global_address()
-			}
 			_packets.remove_all_of_peer(peer_name)
 			_peers.remove(peer_name)
-			emit_signal('peer_dropped', peer_name)
-			for existing_peer in _peers.get_all():
-				existing_peer.send_peer_list_update('remove', [peer])
+			if peer.is_confirmed():
+				emit_signal('peer_dropped', peer_name)
+				for existing_peer in _peers.get_confirmed():
+					existing_peer.send_peer_list_update('remove', [peer])
 		else:
 			emit_signal('error', 'no peer named ' + peer_name)
 	else:
@@ -410,7 +413,7 @@ func init_server(handshake_address, local_address, server_name, password=null):
 	if not self._password:
 		_password = server_name
 		
-	if _addresses_are_equal(_local_address, _handshake_server.address()):
+	if _i_am_handshake_server():
 		emit_signal('confirmed_as_server', _local_address.duplicate())
 		return
 	
@@ -469,7 +472,7 @@ func _addresses_are_equal(lhs, rhs):
 
 func _update_peer_list(action, peer_infos):
 	if _i_am_server:
-		emit_signal('error', 'peer list should not be updated this way from server')
+		print('peer list should not be updated using _update_peer_list from server')
 		return
 		
 	if action == 'add':
@@ -524,8 +527,8 @@ func _get_incoming_packet():
 	
 	#either came from a handshake server or thinks we're a handshake server
 	if jdata['__sender-name'] == null:
-		if _addresses_are_equal(sender_address, get_handshake_server_address()):
-			jdata['__sender-name'] = _handshake_server.name()
+		if _addresses_are_equal(sender_address, _handshake_server.address()):
+			jdata['__sender-name'] = _HS_SERVER_NAME
 			jdata['__destination-name'] = _user_name
 		elif i_am_handshake_server:
 			#"" so it plays well for user on signal packet_received
@@ -715,6 +718,15 @@ class PacketContainer:
 				return true
 		return false
 		
+	func contains_peer_and_type_with_key_value(peer_name, type, key, value):
+		for packet in _packets.duplicate():
+			if packet.dest_name == peer_name:
+				if packet.type == type:
+					var data = packet.get_copy_of_json_data()
+					if data.has(key) and data[key] == value:
+							return true
+		return false
+		
 	func remove_all_of_peer(peer_name):
 		for packet in _packets.duplicate():
 			if packet.dest_name == peer_name:
@@ -870,7 +882,7 @@ class Peer:
 	
 	func add_outgoing_reliable_now(type, data, custom_address=null):
 		add_outgoing_packet(type, data, true, null, true, custom_address)
-		
+	
 	func add_outgoing_unreliable_now(type, data, custom_address=null):
 		add_outgoing_packet(type, data, true, null, false, custom_address)
 		
@@ -894,12 +906,10 @@ class Peer:
 		
 		
 	func make_incoming_packet(jdata, sender_address):
-		#check everything is there
 		if is_confirmed() and sender_address != address():
 			return null
 		elif sender_address != local_address() and sender_address != global_address():
 			return null
-		
 		
 		#check hashes match
 		var sender_hash = jdata['__hash-string']
@@ -911,8 +921,17 @@ class Peer:
 		var jstring = _get_sorted_joined_string_elements_from_array(jdata_copy.keys())
 		jstring += _get_sorted_joined_string_elements_from_array(jdata_copy.values())
 		var hash_string =jstring.sha256_text()
-		print("hashed: " + jstring)
 		if hash_string != sender_hash:
+			if jdata['__destination-name'] != _HS_SERVER_NAME:
+				var msg = "packet has incorrect password (hash mismatch)"
+				if _holepunch_ref.i_am_server():
+					msg = ("packet from " + jdata['__sender-name']
+				 			+ " has incorrect pasword (hash mismatch)")
+					_holepunch_ref.emit_signal("error", msg)
+					_holepunch_ref.drop_peer(jdata['__sender-name'])
+				else: 
+					_holepunch_ref.emit_signal("error", msg)
+					_holepunch_ref.quit_connection()
 			return null
 		
 		#all good
@@ -955,7 +974,6 @@ class Peer:
 		jstring += _get_sorted_joined_string_elements_from_array(copy_for_hashing.values())
 		var hash_string =jstring.sha256_text()
 		data['__hash-string'] = hash_string
-		print("hashed: " + jstring)
 		return data
 	
 	func send_peer_list_update(action, peers):
@@ -973,9 +991,12 @@ class Peer:
 
 class PeerContainer:
 	var _peers = {}
-	
-	func get_all():
-		return _peers.values()
+	func get_confirmed():
+		var ret = []
+		for peer in _peers.values():
+			if peer.is_confirmed():
+				ret.push_back(peer)
+		return ret
 	func get(peer_name):
 		if _peers.has(peer_name):
 			return _peers[peer_name]
