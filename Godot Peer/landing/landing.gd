@@ -120,6 +120,7 @@ func _reset():
 	_console_field.clear()
 
 func _go_to_lobby():
+	holepunch.drop_connection_with_handshake_server()
 	out("This is where the demo ends...")
 	
 func _request_server_list():

@@ -4,7 +4,6 @@
 [ext_resource path="res://fonts/Amaranth/Amaranth-Regular.ttf" type="DynamicFontData" id=2]
 [ext_resource path="res://fonts/IBMPlex_Mono/IBMPlexMono-SemiBold.ttf" type="DynamicFontData" id=3]
 
-
 [sub_resource type="DynamicFont" id=1]
 
 size = 20

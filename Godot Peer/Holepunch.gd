@@ -125,9 +125,7 @@ func _process(delta):
 			return
 			
 		var packet_data =  packet.get_copy_of_json_data()
-		#add sender-name for the handshake server
-		if _addresses_are_equal(packet.sender_address, get_handshake_server_address()):
-			packet_data['__sender-name'] = _handshake_server.name()
+		
 		emit_signal('packet_received', packet_data.duplicate())
 		
 		if packet.type == 'server-error':
@@ -142,7 +140,7 @@ func _process(delta):
 			_packets.remove_all_of_type('requesting-server-list')
 			var info = {
 				'server-list': packet_data['server-list'],
-				'server-address': packet.sender_address
+				'server-address': packet.sender_address.duplicate()
 			}
 			
 			emit_signal('received_server_list', info)
@@ -159,40 +157,58 @@ func _process(delta):
 													data, secs_between_reg_refresh)
 			_server_address =  packet.dest_address
 			_global_address = packet.dest_address
-			emit_signal('confirmed_as_server', packet.sender_address)
+			emit_signal('confirmed_as_server', packet.sender_address.duplicate())
 		
 		elif packet.type == 'confirming-registration-refresh':
 			_packets.reset_expiry_for_all_of_type('refreshing-server-registration')
+		
+		
+		#server is handshake server (on LAN)
+		elif packet.type == 'requesting-to-join-server':
+			#create peer - don't add! we just need it to send
+			var peer = Peer.new(self, packet.sender_name, packet_data['password'],
+								_socket, _packets, packet.sender_address)
+			peer.send_to_as_handshake = true
+			var my_info = {
+				'peer-name': _user_name,
+				'local-address': _local_address,
+				'global-address': packet.dest_address
+			}
+			peer.add_outgoing_unreliable_now('providing-peer-handshake-info',
+											 my_info, packet.sender_address)
+			
+			var their_info = {
+				'peer-name': packet.sender_name,
+				'local-address': packet_data['local-address'],
+				'global-address': packet.sender_address
+			}
+			_handle_handshake_info(their_info)
+			
+			
+		#server is handshake server (LAN)
+		elif packet.type == 'requesting-server-list':
+			#create peer - don't add! we just need it to send
+			var peer = Peer.new(self, packet.sender_name, packet_data['password'],
+								_socket, _packets, packet.sender_address)
+			peer.send_to_as_handshake = true
+			var data = {'server-list': [_user_name]}
+			peer.add_outgoing_unreliable_now('providing-server-list',
+											 data, packet.sender_address)
+			
 		
 		elif packet.type == 'providing-peer-handshake-info':
 			if not _i_am_server:
 				if not _packets.contains_peer_and_type(_handshake_server.name(), 
 														'requesting-to-join-server'):
 					return
+			var their_info = {
+				'peer-name': packet_data['peer-name'],
+				'local-address': packet_data['local-address'],
+				'global-address': packet_data['global-address']
+			}
+			_handle_handshake_info(packet_data)
 			
-			#remove ignores if there are none matching
-			_packets.remove_all_of_type('requesting-to-join-server')
-			var peer_name = packet_data['peer-name']
 
-			var existing_peer = _peers.get(peer_name)
-			
-			if existing_peer and not existing_peer.is_confirmed():
-				return
-				
-			var same_address = false
-			if existing_peer:
-				same_address = (_addresses_are_equal(existing_peer.address(), packet_data['global-address']) 
-								or _addresses_are_equal(existing_peer.address(), packet_data['local-address']))
-			if peer_name == _user_name or (existing_peer and not same_address):
-				emit_signal('error', 'attempted connection with invalid peer name: "' + peer_name + '"')
-				if not _i_am_server:
-					quit_connection()
-			else:
-				var peer = Peer.new(self, peer_name, _password, 
-									self._socket, self._packets,
-									packet_data['global-address'], packet_data['local-address'])
-				_peers.add(peer)
-				peer.send_address_inquiry()
 		
 		elif packet.type == 'address-inquiry':
 			var peer_name = packet.sender_name
@@ -218,7 +234,8 @@ func _process(delta):
 				else:
 					_server_address =  peer.address()
 					_global_address = packet.dest_address
-					emit_signal('confirmed_as_client', get_server_address())
+					emit_signal('confirmed_as_client', 
+								get_server_address().duplicate())
 					emit_signal('peer_joined', peer.name())
 		
 		elif packet.type == 'peer-check':
@@ -260,7 +277,9 @@ func _process(delta):
 		elif packet.type == 'update-peer-list-response':
 			_packets.remove_all_of_peer_and_type(packet.sender_name, 'update-peer-list')
 
-
+		elif packet.type == 'drop-me':
+			if _i_am_server:
+				drop_peer(packet_data['name'])
 
 #############################################################
 #############################################################
@@ -325,6 +344,13 @@ func request_server_list(handshake_address):
 	_handshake_server.add_outgoing_reliable_now('requesting-server-list', data)
 
 func quit_connection():
+	var data = {'name': _user_name}
+	if _handshake_server != null:
+		_handshake_server.add_outgoing_unreliable_now('drop-me', data)
+	if _peers:
+		for peer in _peers.get_all():
+			 peer.add_outgoing_unreliable_now('drop-me', data)
+	
 	var ret_info = {
 		"i_am_server" : i_am_server(),
 		"server_address": get_server_address(),
@@ -345,6 +371,10 @@ func quit_connection():
 
 func drop_connection_with_handshake_server():
 	_packets.remove_all_of_peer(_HS_SERVER_NAME)
+	var handshake_temp = _handshake_server
+	if handshake_temp != null:
+		var data = {'name': _user_name}
+		handshake_temp.add_outgoing_unreliable_now('drop-me', data)
 	_handshake_server = null
 
 func is_connected():
@@ -379,6 +409,11 @@ func init_server(handshake_address, local_address, server_name, password=null):
 	self._password = password
 	if not self._password:
 		_password = server_name
+		
+	if _addresses_are_equal(_local_address, _handshake_server.address()):
+		emit_signal('confirmed_as_server', _local_address.duplicate())
+		return
+	
 	var data = {
 		'local-address': self._local_address,
 		'seconds-before-expiry': self.secs_reg_valid,
@@ -474,16 +509,89 @@ func _get_incoming_packet():
 		return null
 	
 	var jdata = result.result
-	var peer 
-	if jdata.has('__sender-name') and _peers.get(jdata['__sender-name']):
+	if not jdata.has('__type'):
+		return null
+	if not jdata.has('__destination-address'):
+		return null
+	if not jdata.has('__destination-name'):
+		return null
+	if not jdata.has('__hash-string'):
+		return null
+	if not jdata.has('__sender-name'):
+		return null
+	
+	var i_am_handshake_server = _i_am_handshake_server()
+	
+	#either came from a handshake server or thinks we're a handshake server
+	if jdata['__sender-name'] == null:
+		if _addresses_are_equal(sender_address, get_handshake_server_address()):
+			jdata['__sender-name'] = _handshake_server.name()
+			jdata['__destination-name'] = _user_name
+		elif i_am_handshake_server:
+			#"" so it plays well for user on signal packet_received
+			#(ie for string cocnatenation)
+			jdata['__sender-name'] = "" 
+			jdata['__destination-name'] = _HS_SERVER_NAME
+		else:
+			return null
+	
+	if not (jdata['__destination-name'] == _user_name
+			or i_am_handshake_server and jdata['__destination-name'] 
+											== _HS_SERVER_NAME):
+			return null
+	
+	#Note: the hash is not checked for these packets
+	if (jdata['__type'] == 'requesting-to-join-server' 
+		or jdata['__type'] == 'requesting-server-list'):
+		if not i_am_handshake_server:
+			return null
+		var is_outgoing = false
+		return HPacket.new(self, jdata['__sender-name'], _user_name, _socket, 
+							sender_address, jdata['__destination-address'], 
+							jdata['__type'], jdata, is_outgoing)
+	
+	var peer
+	if _peers and _peers.get(jdata['__sender-name']):
 		peer = _peers.get(jdata['__sender-name'])
 	elif _handshake_server:
 		peer = _handshake_server
-	if not peer:
+	if peer:
+		return peer.make_incoming_packet(jdata, sender_address)
+	else:
 		return null
-	return peer.check_security_and_make_incoming_packet(jdata, sender_address)
 
+
+func _i_am_handshake_server():
+	return (_handshake_server and _local_address
+		and _addresses_are_equal(_local_address, _handshake_server.address()))
+
+func _handle_handshake_info(info):
+	#remove ignores if there are none matching
+	_packets.remove_all_of_type('requesting-to-join-server')
+	var peer_name = info['peer-name']
+
+	var existing_peer = _peers.get(peer_name)
 	
+	if existing_peer and not existing_peer.is_confirmed():
+		return
+		
+	var same_address = false
+	if existing_peer:
+		same_address = (_addresses_are_equal(existing_peer.address(), 
+											info['global-address']) 
+					    or _addresses_are_equal(existing_peer.address(), 
+												info['local-address']))
+	if peer_name == _user_name or (existing_peer and not same_address):
+		emit_signal('error', 'attempted connection with invalid peer name: "' 
+					+ peer_name + '"')
+		if not _i_am_server:
+			quit_connection()
+	else:
+		var peer = Peer.new(self, peer_name, _password, 
+							self._socket, self._packets,
+							info['global-address'], info['local-address'])
+		_peers.add(peer)
+		peer.send_address_inquiry()
 			
 			
 #############################################################
@@ -665,6 +773,7 @@ class PacketContainer:
 #This has to come after the packet classes or reference errors materialise
 
 class Peer:
+	var send_to_as_handshake = false
 	var _peer_name = null
 	var _holepunch_ref = null
 	var _local_address = null
@@ -675,6 +784,7 @@ class Peer:
 	var _sent_message_id_counter = 0
 	var _socket = null
 	var _packets = null
+	
 	func _init(holepunch_ref, peer_name, password, socket, packet_container, 
 				global_address, local_address=null):
 		self._holepunch_ref = holepunch_ref
@@ -733,7 +843,7 @@ class Peer:
 		add_outgoing_packet('address-inquiry', l_data, send_now, repeat, resend_on_fail,
 							local_address(), replace)
 
-	
+		
 	func send_message(message, is_broadcast, is_reliable):
 		var data = {'is-broadcast': is_broadcast}
 		data['from'] = _holepunch_ref.get_user_name()
@@ -769,29 +879,25 @@ class Peer:
 	
 	func add_outgoing_packet(type, data, send_now=true, repeat=null, resend_on_fail=true,
 							  custom_address=null, replace_same_peer_and_type=false):
+		data = data.duplicate()
 		var address = custom_address
 		if address == null:
 			address = address()
 		var outgoing = true
 		data = _add_security_outgoing(type, data, address)
-		var packet = HPacket.new(_holepunch_ref, your_name(), name(), socket(), null, address, type, 
+		var your_name = your_name()
+		if send_to_as_handshake:
+			your_name = null
+		var packet = HPacket.new(_holepunch_ref, your_name, name(), socket(), null, address, type, 
 								data, outgoing, resend_on_fail, send_now, repeat)
 		_packets.add(packet, replace_same_peer_and_type)
 		
 		
-	func check_security_and_make_incoming_packet(jdata, sender_address):
+	func make_incoming_packet(jdata, sender_address):
 		#check everything is there
 		if is_confirmed() and sender_address != address():
 			return null
 		elif sender_address != local_address() and sender_address != global_address():
-			return null
-		if not jdata.has('__type'):
-			return null
-		if not jdata.has('__destination-address'):
-			return null
-		if not jdata.has('__destination-name') or jdata['__destination-name'] != your_name():
-			return null
-		if not jdata.has('__hash-string'):
 			return null
 		
 		
@@ -800,9 +906,12 @@ class Peer:
 		jdata.erase('__hash-string')
 		var jdata_copy = jdata.duplicate()
 		jdata_copy['password'] = password()
+		if jdata_copy['__sender-name'] == _HS_SERVER_NAME:
+			jdata_copy['__sender-name'] = null
 		var jstring = _get_sorted_joined_string_elements_from_array(jdata_copy.keys())
 		jstring += _get_sorted_joined_string_elements_from_array(jdata_copy.values())
 		var hash_string =jstring.sha256_text()
+		print("hashed: " + jstring)
 		if hash_string != sender_hash:
 			return null
 		
@@ -834,7 +943,10 @@ class Peer:
 		
 	func _add_security_outgoing(type, data, address):
 		data['__type'] = type
-		data['__sender-name'] = your_name()
+		if send_to_as_handshake:
+			data['__sender-name'] = null
+		else:
+			data['__sender-name'] = your_name()
 		data['__destination-name'] = name()
 		data['__destination-address'] = address
 		var copy_for_hashing = data.duplicate()
@@ -843,6 +955,7 @@ class Peer:
 		jstring += _get_sorted_joined_string_elements_from_array(copy_for_hashing.values())
 		var hash_string =jstring.sha256_text()
 		data['__hash-string'] = hash_string
+		print("hashed: " + jstring)
 		return data
 	
 	func send_peer_list_update(action, peers):

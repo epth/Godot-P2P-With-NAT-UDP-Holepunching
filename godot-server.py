@@ -26,6 +26,11 @@ class ServerProtocol(DatagramProtocol):
         if jData == None:
             return
         
+        if jData['__type'] == 'drop-me':
+            if jData['name'] in self.serverHosts:
+                self.serverHosts.pop(jData['name'])
+                print("dropped " + jData['name'])
+
         #send back a list of servers if that's what we're doing
         if jData['__type'] == 'requesting-server-list':
             reply = {
@@ -114,6 +119,8 @@ class ServerProtocol(DatagramProtocol):
             requiredKeys.extend(['password'])
         elif validData['__type'] == 'refreshing-server-registration':
             requiredKeys.extend(['seconds-before-expiry'])
+        elif validData['__type'] == 'drop-me':
+            requiredKeys.extend(['name'])
         for requiredKey in requiredKeys:
             if requiredKey in data:
                 validData[requiredKey] = data[requiredKey]
@@ -150,6 +157,7 @@ class ServerProtocol(DatagramProtocol):
         data['__type'] = packetType 
         data['__destination-name'] = destName 
         data['__destination-address'] = destAddress 
+        data['__sender-name'] = None
         if password:
             data['password'] = password
         elif not 'password' in data:
