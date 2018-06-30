@@ -1,9 +1,22 @@
-[gd_scene load_steps=5 format=2]
+[gd_scene load_steps=7 format=2]
 
 [ext_resource path="res://landing/landing.gd" type="Script" id=1]
-[ext_resource path="res://fonts/IBMPlex_Mono/IBMPlexMono-SemiBold.ttf" type="DynamicFontData" id=2]
+[ext_resource path="res://fonts/Amaranth/Amaranth-Regular.ttf" type="DynamicFontData" id=2]
+[ext_resource path="res://fonts/IBMPlex_Mono/IBMPlexMono-SemiBold.ttf" type="DynamicFontData" id=3]
 
-[sub_resource type="StyleBoxFlat" id=1]
+
+[sub_resource type="DynamicFont" id=1]
+
+size = 20
+outline_size = 0
+outline_color = Color( 1, 1, 1, 1 )
+use_mipmaps = false
+use_filter = false
+extra_spacing_char = 5
+font_data = ExtResource( 2 )
+_sections_unfolded = [ "Extra Spacing", "Font", "Settings", "font_data" ]
+
+[sub_resource type="StyleBoxFlat" id=2]
 
 content_margin_left = -1.0
 content_margin_right = -1.0
@@ -32,16 +45,17 @@ anti_aliasing = true
 anti_aliasing_size = 1
 _sections_unfolded = [ "Border", "Border Width" ]
 
-[sub_resource type="DynamicFont" id=2]
+[sub_resource type="DynamicFont" id=3]
 
 size = 16
+outline_size = 0
+outline_color = Color( 1, 1, 1, 1 )
 use_mipmaps = false
 use_filter = false
-font_data = ExtResource( 2 )
-_sections_unfolded = [ "Font", "Settings" ]
+font_data = ExtResource( 3 )
+_sections_unfolded = [ "Font", "Settings", "font_data" ]
 
 [node name="Landing" type="Panel" index="0"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 1.0
@@ -56,7 +70,6 @@ script = ExtResource( 1 )
 _sections_unfolded = [ "Margin", "Size Flags", "Theme" ]
 
 [node name="Margin" type="MarginContainer" parent="." index="0"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 1.0
@@ -74,7 +87,6 @@ custom_constants/margin_bottom = 20
 _sections_unfolded = [ "Anchor", "Custom Constants", "Margin", "Mouse", "Size Flags", "Theme", "custom_constants" ]
 
 [node name="MainContainer" type="VBoxContainer" parent="Margin" index="0"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
@@ -93,13 +105,12 @@ alignment = 0
 _sections_unfolded = [ "Margin", "Size Flags", "Theme" ]
 
 [node name="Header" type="HBoxContainer" parent="Margin/MainContainer" index="0"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
 margin_right = 984.0
-margin_bottom = 20.0
+margin_bottom = 25.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 1
@@ -109,14 +120,12 @@ size_flags_vertical = 1
 alignment = 0
 
 [node name="OptionsButton" type="Button" parent="Margin/MainContainer/Header" index="0"]
-
-modulate = Color( 1, 1, 1, 0 )
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
 margin_right = 119.0
-margin_bottom = 20.0
+margin_bottom = 25.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 focus_mode = 2
@@ -124,7 +133,6 @@ mouse_filter = 0
 mouse_default_cursor_shape = 0
 size_flags_horizontal = 1
 size_flags_vertical = 1
-disabled = true
 toggle_mode = false
 enabled_focus_mode = 2
 shortcut = null
@@ -132,10 +140,8 @@ group = null
 text = "       Options       "
 flat = false
 align = 1
-_sections_unfolded = [ "Visibility" ]
 
 [node name="OptionsButton2" type="Button" parent="Margin/MainContainer/Header" index="1"]
-
 modulate = Color( 1, 1, 1, 0 )
 anchor_left = 0.0
 anchor_top = 0.0
@@ -143,7 +149,7 @@ anchor_right = 0.0
 anchor_bottom = 0.0
 margin_left = 123.0
 margin_right = 242.0
-margin_bottom = 20.0
+margin_bottom = 25.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 focus_mode = 2
@@ -162,21 +168,21 @@ align = 1
 _sections_unfolded = [ "Visibility" ]
 
 [node name="Label" type="Label" parent="Margin/MainContainer/Header" index="2"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
 margin_left = 246.0
-margin_top = 3.0
 margin_right = 781.0
-margin_bottom = 17.0
+margin_bottom = 25.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 2
 mouse_default_cursor_shape = 0
 size_flags_horizontal = 3
 size_flags_vertical = 4
+custom_fonts/font = SubResource( 1 )
+custom_colors/font_color = Color( 0.6, 0.6, 0.6, 1 )
 text = "NAT UDP Holepunch Demo"
 align = 1
 valign = 1
@@ -186,14 +192,13 @@ max_lines_visible = -1
 _sections_unfolded = [ "Custom Colors", "Custom Fonts", "Size Flags", "Visibility", "custom_colors", "custom_fonts", "custom_fonts/font" ]
 
 [node name="ResetButton" type="Button" parent="Margin/MainContainer/Header" index="3"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
 margin_left = 785.0
 margin_right = 889.0
-margin_bottom = 20.0
+margin_bottom = 25.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 focus_mode = 2
@@ -210,14 +215,13 @@ flat = false
 align = 1
 
 [node name="ExitButton" type="Button" parent="Margin/MainContainer/Header" index="4"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
 margin_left = 893.0
 margin_right = 984.0
-margin_bottom = 20.0
+margin_bottom = 25.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 focus_mode = 2
@@ -234,15 +238,14 @@ flat = false
 align = 1
 
 [node name="Seperator003" type="MarginContainer" parent="Margin/MainContainer" index="1"]
-
 editor/display_folded = true
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_top = 24.0
+margin_top = 29.0
 margin_right = 984.0
-margin_bottom = 36.0
+margin_bottom = 41.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 0
@@ -255,7 +258,6 @@ custom_constants/margin_bottom = 5
 _sections_unfolded = [ "Anchor", "Custom Constants", "Margin", "Rect", "Size Flags", "custom_constants" ]
 
 [node name="ColorRect" type="ColorRect" parent="Margin/MainContainer/Seperator003" index="0"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
@@ -275,12 +277,11 @@ color = Color( 0.458824, 0.423529, 0.423529, 1 )
 _sections_unfolded = [ "Material", "Rect", "Size Flags", "Visibility", "material" ]
 
 [node name="VBoxContainer2" type="VBoxContainer" parent="Margin/MainContainer" index="2"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_top = 40.0
+margin_top = 45.0
 margin_right = 984.0
 margin_bottom = 560.0
 rect_pivot_offset = Vector2( 0, 0 )
@@ -293,13 +294,12 @@ alignment = 0
 _sections_unfolded = [ "Size Flags" ]
 
 [node name="HBoxContainer7" type="HBoxContainer" parent="Margin/MainContainer/VBoxContainer2" index="0"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
 margin_right = 984.0
-margin_bottom = 24.0
+margin_bottom = 52.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 1
@@ -309,8 +309,38 @@ size_flags_vertical = 1
 alignment = 0
 _sections_unfolded = [ "Size Flags" ]
 
-[node name="Label" type="Label" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer7" index="0"]
+[node name="VBoxContainer" type="VBoxContainer" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer7" index="0"]
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_right = 484.0
+margin_bottom = 52.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 1
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 3
+size_flags_vertical = 1
+alignment = 0
+_sections_unfolded = [ "Size Flags" ]
 
+[node name="HBoxContainer" type="HBoxContainer" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer7/VBoxContainer" index="0"]
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_right = 484.0
+margin_bottom = 24.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 1
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 1
+alignment = 0
+
+[node name="Label" type="Label" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer7/VBoxContainer/HBoxContainer" index="0"]
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
@@ -329,14 +359,13 @@ percent_visible = 1.0
 lines_skipped = 0
 max_lines_visible = -1
 
-[node name="LocalIPField" type="LineEdit" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer7" index="1"]
-
+[node name="LocalIPField" type="LineEdit" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer7/VBoxContainer/HBoxContainer" index="1"]
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
 margin_left = 82.0
-margin_right = 483.0
+margin_right = 418.0
 margin_bottom = 24.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
@@ -345,70 +374,46 @@ mouse_filter = 0
 mouse_default_cursor_shape = 1
 size_flags_horizontal = 3
 size_flags_vertical = 1
+secret_character = "*"
 focus_mode = 2
 context_menu_enabled = true
-placeholder_text = "find using ipconfig or similar"
+placeholder_text = "stuck?  cycle through possibilities -->"
 placeholder_alpha = 0.6
 caret_blink = true
 caret_blink_speed = 0.65
 caret_position = 0
 _sections_unfolded = [ "Placeholder", "Size Flags" ]
 
-[node name="Label2" type="Label" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer7" index="2"]
-
+[node name="CycleLocalIPButton" type="Button" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer7/VBoxContainer/HBoxContainer" index="2"]
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_left = 487.0
-margin_top = 5.0
-margin_right = 579.0
-margin_bottom = 19.0
+margin_left = 422.0
+margin_right = 484.0
+margin_bottom = 24.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
-mouse_filter = 2
+focus_mode = 2
+mouse_filter = 0
 mouse_default_cursor_shape = 0
 size_flags_horizontal = 1
-size_flags_vertical = 4
-text = "my local port: "
-percent_visible = 1.0
-lines_skipped = 0
-max_lines_visible = -1
-
-[node name="LocalPortField" type="LineEdit" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer7" index="3"]
-
-anchor_left = 0.0
-anchor_top = 0.0
-anchor_right = 0.0
-anchor_bottom = 0.0
-margin_left = 583.0
-margin_right = 984.0
-margin_bottom = 24.0
-rect_pivot_offset = Vector2( 0, 0 )
-rect_clip_content = false
-focus_mode = 2
-mouse_filter = 0
-mouse_default_cursor_shape = 1
-size_flags_horizontal = 3
 size_flags_vertical = 1
-focus_mode = 2
-context_menu_enabled = true
-placeholder_text = "any free port"
-placeholder_alpha = 0.6
-caret_blink = true
-caret_blink_speed = 0.65
-caret_position = 0
-_sections_unfolded = [ "Placeholder", "Size Flags" ]
+toggle_mode = false
+enabled_focus_mode = 2
+shortcut = null
+group = null
+text = "  Cycle  "
+flat = false
+align = 1
 
-[node name="HBoxContainer8" type="HBoxContainer" parent="Margin/MainContainer/VBoxContainer2" index="1"]
-
-editor/display_folded = true
+[node name="HBoxContainer8" type="HBoxContainer" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer7/VBoxContainer" index="1"]
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
 margin_top = 28.0
-margin_right = 984.0
+margin_right = 484.0
 margin_bottom = 52.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
@@ -419,8 +424,7 @@ size_flags_vertical = 1
 alignment = 0
 _sections_unfolded = [ "Size Flags" ]
 
-[node name="Label" type="Label" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer8" index="0"]
-
+[node name="Label" type="Label" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer7/VBoxContainer/HBoxContainer8" index="0"]
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
@@ -439,14 +443,13 @@ percent_visible = 1.0
 lines_skipped = 0
 max_lines_visible = -1
 
-[node name="HandshakeServerIPField" type="LineEdit" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer8" index="1"]
-
+[node name="HandshakeServerIPField" type="LineEdit" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer7/VBoxContainer/HBoxContainer8" index="1"]
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
 margin_left = 140.0
-margin_right = 483.0
+margin_right = 484.0
 margin_bottom = 24.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
@@ -455,6 +458,7 @@ mouse_filter = 0
 mouse_default_cursor_shape = 1
 size_flags_horizontal = 3
 size_flags_vertical = 1
+secret_character = "*"
 focus_mode = 2
 context_menu_enabled = true
 placeholder_alpha = 0.6
@@ -463,15 +467,140 @@ caret_blink_speed = 0.65
 caret_position = 0
 _sections_unfolded = [ "Placeholder", "Size Flags" ]
 
-[node name="Label2" type="Label" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer8" index="2"]
-
+[node name="VBoxContainer3" type="VBoxContainer" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer7" index="1"]
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_left = 487.0
+margin_left = 488.0
+margin_right = 496.0
+margin_bottom = 52.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 1
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 1
+alignment = 0
+
+[node name="Label" type="Label" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer7/VBoxContainer3" index="0"]
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_right = 8.0
+margin_bottom = 14.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 2
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 4
+text = "  "
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="VBoxContainer2" type="VBoxContainer" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer7" index="2"]
+editor/display_folded = true
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 500.0
+margin_right = 984.0
+margin_bottom = 52.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 1
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 3
+size_flags_vertical = 1
+alignment = 0
+_sections_unfolded = [ "Size Flags" ]
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer7/VBoxContainer2" index="0"]
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_right = 484.0
+margin_bottom = 24.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 1
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 1
+alignment = 0
+
+[node name="Label2" type="Label" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer7/VBoxContainer2/HBoxContainer" index="0"]
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
 margin_top = 5.0
-margin_right = 637.0
+margin_right = 92.0
+margin_bottom = 19.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 2
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 4
+text = "my local port: "
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="LocalPortField" type="LineEdit" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer7/VBoxContainer2/HBoxContainer" index="1"]
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 96.0
+margin_right = 484.0
+margin_bottom = 24.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+focus_mode = 2
+mouse_filter = 0
+mouse_default_cursor_shape = 1
+size_flags_horizontal = 3
+size_flags_vertical = 1
+secret_character = "*"
+focus_mode = 2
+context_menu_enabled = true
+placeholder_text = "any free port"
+placeholder_alpha = 0.6
+caret_blink = true
+caret_blink_speed = 0.65
+caret_position = 0
+_sections_unfolded = [ "Placeholder", "Size Flags" ]
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer7/VBoxContainer2" index="1"]
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_top = 28.0
+margin_right = 484.0
+margin_bottom = 52.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 1
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 1
+alignment = 0
+
+[node name="Label2" type="Label" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer7/VBoxContainer2/HBoxContainer2" index="0"]
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_top = 5.0
+margin_right = 150.0
 margin_bottom = 19.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
@@ -484,14 +613,13 @@ percent_visible = 1.0
 lines_skipped = 0
 max_lines_visible = -1
 
-[node name="HandshakeServerPortField" type="LineEdit" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer8" index="3"]
-
+[node name="HandshakeServerPortField" type="LineEdit" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer7/VBoxContainer2/HBoxContainer2" index="1"]
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_left = 641.0
-margin_right = 984.0
+margin_left = 154.0
+margin_right = 484.0
 margin_bottom = 24.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
@@ -500,6 +628,7 @@ mouse_filter = 0
 mouse_default_cursor_shape = 1
 size_flags_horizontal = 3
 size_flags_vertical = 1
+secret_character = "*"
 focus_mode = 2
 context_menu_enabled = true
 placeholder_alpha = 0.6
@@ -508,8 +637,7 @@ caret_blink_speed = 0.65
 caret_position = 0
 _sections_unfolded = [ "Placeholder", "Size Flags" ]
 
-[node name="Label7" type="Label" parent="Margin/MainContainer/VBoxContainer2" index="2"]
-
+[node name="Label7" type="Label" parent="Margin/MainContainer/VBoxContainer2" index="1"]
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
@@ -529,9 +657,7 @@ lines_skipped = 0
 max_lines_visible = -1
 _sections_unfolded = [ "Size Flags" ]
 
-[node name="HBoxContainer" type="HBoxContainer" parent="Margin/MainContainer/VBoxContainer2" index="3"]
-
-editor/display_folded = true
+[node name="HBoxContainer" type="HBoxContainer" parent="Margin/MainContainer/VBoxContainer2" index="2"]
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
@@ -548,7 +674,6 @@ size_flags_vertical = 1
 alignment = 0
 
 [node name="Label" type="Label" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer" index="0"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
@@ -568,7 +693,6 @@ lines_skipped = 0
 max_lines_visible = -1
 
 [node name="UserNameField" type="LineEdit" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer" index="1"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
@@ -583,6 +707,7 @@ mouse_filter = 0
 mouse_default_cursor_shape = 1
 size_flags_horizontal = 3
 size_flags_vertical = 1
+secret_character = "*"
 focus_mode = 2
 context_menu_enabled = true
 placeholder_alpha = 0.6
@@ -591,8 +716,7 @@ caret_blink_speed = 0.65
 caret_position = 0
 _sections_unfolded = [ "Size Flags" ]
 
-[node name="HBoxContainer3" type="HBoxContainer" parent="Margin/MainContainer/VBoxContainer2" index="4"]
-
+[node name="HBoxContainer3" type="HBoxContainer" parent="Margin/MainContainer/VBoxContainer2" index="3"]
 editor/display_folded = true
 anchor_left = 0.0
 anchor_top = 0.0
@@ -610,7 +734,6 @@ size_flags_vertical = 1
 alignment = 0
 
 [node name="Label2" type="Label" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer3" index="0"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
@@ -630,7 +753,6 @@ lines_skipped = 0
 max_lines_visible = -1
 
 [node name="PasswordField" type="LineEdit" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer3" index="1"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
@@ -645,6 +767,7 @@ mouse_filter = 0
 mouse_default_cursor_shape = 1
 size_flags_horizontal = 3
 size_flags_vertical = 1
+secret_character = "*"
 focus_mode = 2
 context_menu_enabled = true
 placeholder_alpha = 0.6
@@ -653,8 +776,7 @@ caret_blink_speed = 0.65
 caret_position = 0
 _sections_unfolded = [ "Placeholder", "Size Flags" ]
 
-[node name="HBoxContainer2" type="HBoxContainer" parent="Margin/MainContainer/VBoxContainer2" index="5"]
-
+[node name="HBoxContainer2" type="HBoxContainer" parent="Margin/MainContainer/VBoxContainer2" index="4"]
 editor/display_folded = true
 anchor_left = 0.0
 anchor_top = 0.0
@@ -672,7 +794,6 @@ size_flags_vertical = 1
 alignment = 0
 
 [node name="RegisterServerButton" type="Button" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer2" index="0"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
@@ -696,7 +817,6 @@ align = 1
 _sections_unfolded = [ "Size Flags" ]
 
 [node name="Label" type="Label" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer2" index="1"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
@@ -718,7 +838,6 @@ max_lines_visible = -1
 _sections_unfolded = [ "Size Flags" ]
 
 [node name="JoinServerButton" type="Button" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer2" index="2"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
@@ -743,7 +862,6 @@ align = 1
 _sections_unfolded = [ "Size Flags" ]
 
 [node name="ServerField" type="LineEdit" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer2" index="3"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
@@ -758,6 +876,7 @@ mouse_filter = 0
 mouse_default_cursor_shape = 1
 size_flags_horizontal = 3
 size_flags_vertical = 1
+secret_character = "*"
 focus_mode = 2
 context_menu_enabled = true
 placeholder_alpha = 0.6
@@ -766,8 +885,7 @@ caret_blink_speed = 0.65
 caret_position = 0
 _sections_unfolded = [ "Size Flags" ]
 
-[node name="Label8" type="Label" parent="Margin/MainContainer/VBoxContainer2" index="6"]
-
+[node name="Label8" type="Label" parent="Margin/MainContainer/VBoxContainer2" index="5"]
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
@@ -787,8 +905,7 @@ lines_skipped = 0
 max_lines_visible = -1
 _sections_unfolded = [ "Size Flags" ]
 
-[node name="HBoxContainer6" type="HBoxContainer" parent="Margin/MainContainer/VBoxContainer2" index="7"]
-
+[node name="HBoxContainer6" type="HBoxContainer" parent="Margin/MainContainer/VBoxContainer2" index="6"]
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
@@ -805,7 +922,6 @@ size_flags_vertical = 1
 alignment = 0
 
 [node name="PeerMessageField" type="LineEdit" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer6" index="0"]
-
 modulate = Color( 1, 1, 1, 0 )
 anchor_left = 0.0
 anchor_top = 0.0
@@ -821,6 +937,7 @@ mouse_default_cursor_shape = 1
 size_flags_horizontal = 3
 size_flags_vertical = 1
 editable = false
+secret_character = "*"
 focus_mode = 2
 context_menu_enabled = true
 placeholder_text = "Message to peer"
@@ -831,7 +948,6 @@ caret_position = 0
 _sections_unfolded = [ "Placeholder", "Size Flags", "Visibility" ]
 
 [node name="HBoxContainer" type="HBoxContainer" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer6" index="1"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
@@ -849,7 +965,6 @@ alignment = 0
 _sections_unfolded = [ "Size Flags" ]
 
 [node name="PeerUserNameField" type="LineEdit" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer6/HBoxContainer" index="0"]
-
 modulate = Color( 1, 1, 1, 0 )
 anchor_left = 0.0
 anchor_top = 0.0
@@ -865,6 +980,7 @@ mouse_default_cursor_shape = 1
 size_flags_horizontal = 3
 size_flags_vertical = 1
 editable = false
+secret_character = "*"
 focus_mode = 2
 context_menu_enabled = true
 placeholder_text = "Peer username"
@@ -875,7 +991,6 @@ caret_position = 0
 _sections_unfolded = [ "Placeholder", "Size Flags", "Visibility" ]
 
 [node name="SendMessageButton" type="Button" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer6/HBoxContainer" index="1"]
-
 modulate = Color( 1, 1, 1, 0 )
 anchor_left = 0.0
 anchor_top = 0.0
@@ -902,7 +1017,6 @@ align = 1
 _sections_unfolded = [ "Visibility" ]
 
 [node name="PrintPeersButton" type="Button" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer6/HBoxContainer" index="2"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
@@ -926,7 +1040,6 @@ flat = false
 align = 1
 
 [node name="GetServerListButton" type="Button" parent="Margin/MainContainer/VBoxContainer2/HBoxContainer6/HBoxContainer" index="3"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
@@ -949,26 +1062,24 @@ text = "Get Server List"
 flat = false
 align = 1
 
-[node name="Panel" type="Panel" parent="Margin/MainContainer/VBoxContainer2" index="8"]
-
+[node name="Panel" type="Panel" parent="Margin/MainContainer/VBoxContainer2" index="7"]
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
 margin_top = 204.0
 margin_right = 984.0
-margin_bottom = 496.0
+margin_bottom = 491.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 0
 mouse_default_cursor_shape = 0
 size_flags_horizontal = 3
 size_flags_vertical = 3
-custom_styles/panel = SubResource( 1 )
+custom_styles/panel = SubResource( 2 )
 _sections_unfolded = [ "Size Flags", "Theme", "custom_styles" ]
 
 [node name="VBoxContainer" type="VBoxContainer" parent="Margin/MainContainer/VBoxContainer2/Panel" index="0"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 1.0
@@ -983,13 +1094,12 @@ alignment = 0
 _sections_unfolded = [ "Size Flags", "Visibility" ]
 
 [node name="MarginContainer" type="MarginContainer" parent="Margin/MainContainer/VBoxContainer2/Panel/VBoxContainer" index="0"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
 margin_right = 984.0
-margin_bottom = 292.0
+margin_bottom = 287.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 0
@@ -1003,7 +1113,6 @@ custom_constants/margin_bottom = 5
 _sections_unfolded = [ "Custom Constants", "Size Flags", "custom_constants" ]
 
 [node name="VBoxContainer" type="VBoxContainer" parent="Margin/MainContainer/VBoxContainer2/Panel/VBoxContainer/MarginContainer" index="0"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
@@ -1011,7 +1120,7 @@ anchor_bottom = 0.0
 margin_left = 5.0
 margin_top = 5.0
 margin_right = 979.0
-margin_bottom = 287.0
+margin_bottom = 282.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 1
@@ -1021,13 +1130,12 @@ size_flags_vertical = 1
 alignment = 0
 
 [node name="MarginContainer2" type="MarginContainer" parent="Margin/MainContainer/VBoxContainer2/Panel/VBoxContainer/MarginContainer/VBoxContainer" index="0"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
 margin_right = 974.0
-margin_bottom = 254.0
+margin_bottom = 249.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 0
@@ -1041,7 +1149,6 @@ custom_constants/margin_bottom = 5
 _sections_unfolded = [ "Custom Constants", "Size Flags", "custom_constants" ]
 
 [node name="OutputField" type="RichTextLabel" parent="Margin/MainContainer/VBoxContainer2/Panel/VBoxContainer/MarginContainer/VBoxContainer/MarginContainer2" index="0"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
@@ -1049,14 +1156,14 @@ anchor_bottom = 0.0
 margin_left = 5.0
 margin_top = 5.0
 margin_right = 969.0
-margin_bottom = 249.0
+margin_bottom = 244.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 0
 mouse_default_cursor_shape = 0
 size_flags_horizontal = 1
 size_flags_vertical = 3
-custom_fonts/normal_font = SubResource( 2 )
+custom_fonts/normal_font = SubResource( 3 )
 custom_colors/default_color = Color( 0.498467, 0.917969, 0.505022, 1 )
 custom_constants/line_separation = 1
 bbcode_enabled = false
@@ -1073,14 +1180,13 @@ override_selected_font_color = false
 _sections_unfolded = [ "Custom Fonts", "Size Flags", "Visibility", "custom_colors", "custom_constants", "custom_fonts", "custom_fonts/normal_font" ]
 
 [node name="InputField" type="LineEdit" parent="Margin/MainContainer/VBoxContainer2/Panel/VBoxContainer/MarginContainer/VBoxContainer" index="1"]
-
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_top = 258.0
+margin_top = 253.0
 margin_right = 974.0
-margin_bottom = 282.0
+margin_bottom = 277.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 focus_mode = 2
@@ -1088,6 +1194,7 @@ mouse_filter = 0
 mouse_default_cursor_shape = 1
 size_flags_horizontal = 3
 size_flags_vertical = 1
+secret_character = "*"
 focus_mode = 2
 context_menu_enabled = true
 placeholder_text = "@peer to send to specific peer."
@@ -1097,15 +1204,14 @@ caret_blink_speed = 0.65
 caret_position = 0
 _sections_unfolded = [ "Placeholder", "Size Flags" ]
 
-[node name="GoToLobbyButton" type="Button" parent="Margin/MainContainer/VBoxContainer2" index="9"]
-
+[node name="GoToLobbyButton" type="Button" parent="Margin/MainContainer/VBoxContainer2" index="8"]
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_top = 500.0
+margin_top = 495.0
 margin_right = 984.0
-margin_bottom = 520.0
+margin_bottom = 515.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 focus_mode = 2
@@ -1120,5 +1226,4 @@ group = null
 text = "Cut Connection With Handshake Server"
 flat = false
 align = 1
-
 

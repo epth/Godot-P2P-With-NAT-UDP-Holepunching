@@ -16,6 +16,10 @@ onready var _reset_button = find_node("ResetButton")
 onready var _exit_button = find_node("ExitButton")
 onready var _console_field = find_node("OutputField", true)
 onready var _input_field = find_node("InputField", true)
+onready var _cycle_local_ip_button = find_node("CycleLocalIPButton")
+
+var _local_ips = null
+var _local_ip_index = -1
 
 func _ready():
 	#connect button-press signals
@@ -59,6 +63,15 @@ func _ready():
 	_username_field.text = 'euler'
 
 
+	_cycle_local_ip_button.connect('pressed', self, '_cycle_local_ip')
+	_local_ips = IP.get_local_addresses()
+	for ip in _local_ips.duplicate():
+		if ip.find(':') != -1 or ip.begins_with('127.0.'):
+			print(ip)
+			_local_ips.erase(ip)
+	
+	
+
 func out(message):
 	"""prints a message to the gui console"""
 	_console_field.add_text(message)
@@ -68,6 +81,15 @@ func out(message):
 ######################################
 ##           INPUTS
 ######################################
+
+func _cycle_local_ip():
+	_local_ip_index += 1
+	_local_ip_index %= _local_ips.size()
+	if _local_ips.size() > 0:
+		_local_ip_field.text = _local_ips[_local_ip_index]
+		_cycle_local_ip_button.text = ("  Cycle  (" + str(_local_ip_index+1) + "/" 
+									+ str(_local_ips.size()) + ")")
+
 
 func _input_entered(text):
 	if not holepunch.is_connected():
