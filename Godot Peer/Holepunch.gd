@@ -150,8 +150,8 @@ func _process(delta):
 													'requesting-server-list'):
 				return
 			_packets.remove_all_of_type('requesting-server-list')
-			emit_signal('received_server_list', packet.sender_address.duplicate(),
-												packet_data['servers'])
+			emit_signal('received_server_list', packet_data['servers'],
+									packet.sender_address.duplicate())
 		
 		elif packet.type == 'confirming-registration':
 			if not _packets.contains_peer_and_type(_handshake_server.name(), 
