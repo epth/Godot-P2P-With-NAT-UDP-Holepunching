@@ -197,11 +197,11 @@ func _peer_handshake_timeout(peer_name):
 	out("Failed to connect to " + peer_name)
 	
 	
-func _print_server_list(info):
-	out("Received server list from " + info['server-address'][0])
+func _print_server_list(handshake_address, servers):
+	out("Received server list from " + handshake_address[0])
 	out("Servers: ")
-	for server in info['server-list']:
-		out("    " +server)
+	for server in servers:
+		out("    " + str(server))
 
 
 func _error(message):

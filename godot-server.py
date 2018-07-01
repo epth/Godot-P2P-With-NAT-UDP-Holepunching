@@ -39,9 +39,13 @@ class ServerProtocol(DatagramProtocol):
 
         #send back a list of servers if that's what we're doing
         if jData['__type'] == 'requesting-server-list':
-            reply = {
-                'server-list' : list(self.serverHosts.keys()),
-            }
+            reply = {'servers': []}
+            for server_host, info in self.serverHosts.items():
+                reply['servers'].append({
+                    'name' : server_host, 
+                    'password-required': info['password-required']
+                })
+
             self.send('providing-server-list', jData['__sender-name'], jData['global-address'], reply, jData['password'])
             print("sent server list to: " + str(jData['global-address']))
 
@@ -58,6 +62,7 @@ class ServerProtocol(DatagramProtocol):
                 'global-address': jData['global-address'],
                 'local-address': jData['local-address'],
                 'password': jData['password'],
+                'password-required': jData['password-required'],
                 '__sender-name': jData['__sender-name']
             }
             print(jData['__sender-name'] + " added to server list")
@@ -120,7 +125,7 @@ class ServerProtocol(DatagramProtocol):
         if validData['__type'] == 'requesting-to-join-server':
             requiredKeys.extend(['server-name', 'local-address', 'password'])
         elif validData['__type'] == 'registering-server':
-            requiredKeys.extend(['seconds-before-expiry', 'local-address', 'password'])
+            requiredKeys.extend(['seconds-before-expiry', 'local-address', 'password', 'password-required'])
         elif validData['__type'] == 'requesting-server-list':
             requiredKeys.extend(['password'])
         elif validData['__type'] == 'refreshing-server-registration':

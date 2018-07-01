@@ -150,12 +150,8 @@ func _process(delta):
 													'requesting-server-list'):
 				return
 			_packets.remove_all_of_type('requesting-server-list')
-			var info = {
-				'server-list': packet_data['server-list'],
-				'server-address': packet.sender_address.duplicate()
-			}
-			
-			emit_signal('received_server_list', info)
+			emit_signal('received_server_list', packet.sender_address.duplicate(),
+												packet_data['servers'])
 		
 		elif packet.type == 'confirming-registration':
 			if not _packets.contains_peer_and_type(_handshake_server.name(), 
@@ -203,7 +199,12 @@ func _process(delta):
 			var peer = Peer.new(self, packet.sender_name, packet_data['password'],
 								_socket, _packets, packet.sender_address)
 			peer.send_to_as_handshake = true
-			var data = {'server-list': [_user_name]}
+			var data = {'servers': 
+							[{
+								'name': _user_name, 
+								'password-required': _password != _user_name
+							}]
+						}
 			peer.add_outgoing_unreliable_now('providing-server-list',
 											 data, packet.sender_address)
 			
@@ -299,6 +300,9 @@ func _process(delta):
 func get_user_name():
 	return _user_name
 
+func get_password():
+	return _password
+	
 func get_server_name():
 	return _server_name
 	
@@ -413,7 +417,7 @@ func init_server(handshake_address, local_address, server_name, password=null):
 	self._i_am_server = true
 	self._server_name = server_name
 	self._password = password
-	if not self._password:
+	if self._password == "" or self._password == null:
 		_password = server_name
 		
 	if _i_am_handshake_server():
@@ -423,7 +427,8 @@ func init_server(handshake_address, local_address, server_name, password=null):
 	var data = {
 		'local-address': self._local_address,
 		'seconds-before-expiry': self.secs_reg_valid,
-		'password': _handshake_server.password()
+		'password': _handshake_server.password(),
+		'password-required' : self._password != server_name
 	}
 	_handshake_server.add_outgoing_reliable_now('registering-server', data)
 
@@ -435,7 +440,7 @@ func init_client(handshake_address, local_address, user_name, server_name, passw
 	self._i_am_server = false
 	self._server_name = server_name
 	self._password = password
-	if not self._password:
+	if self._password == "" or self._password == null:
 		_password = server_name
 	var data = {
 		'local-address': self._local_address,
