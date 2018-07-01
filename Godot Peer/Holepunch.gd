@@ -285,7 +285,10 @@ func _process(delta):
 			_packets.remove_all_of_peer_and_type(packet.sender_name, 'update-peer-list')
 
 		elif packet.type == 'drop-me':
-			if _i_am_server:
+			if packet.sender_name == get_server_name():
+				emit_signal("error", "server peer disconnected")
+				quit_connection()
+			elif _i_am_server:
 				drop_peer(packet_data['name'])
 
 #############################################################
